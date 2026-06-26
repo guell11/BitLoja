@@ -1,0 +1,10 @@
+# Exemplo para TESTNET. Não exponha RPC ou ZMQ à internet.
+testnet=1
+server=1
+rpcbind=127.0.0.1
+rpcallowip=127.0.0.1
+rpcuser=bitcoinrpc
+rpcpassword=USE_UMA_SENHA_LONGA_E_EXCLUSIVA
+fallbackfee=0.0002
+zmqpubrawblock=tcp://127.0.0.1:28332
+zmqpubrawtx=tcp://127.0.0.1:28333
