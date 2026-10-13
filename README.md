@@ -83,7 +83,6 @@ O carrinho permite ajustar quantidades e remover itens; o checkout separa pedido
 |---|---|
 | ![Painel de carteira Bitcoin](docs/screenshots/wallet-new.jpg) | ![Painel de operações e custódia Bitcoin](docs/screenshots/bitcoin-panel-new.jpg) |
 
-![Carteira Bitcoin adaptada para celular](docs/screenshots/wallet-mobile-new.jpg)
 
 O **vendedor** gerencia produtos, estoque, loja, pedidos e atualizações de entrega. O **administrador** encontra visão operacional, liquidações, tesouraria, disputas, usuários/lojas e auditoria. As áreas financeiras apresentam estado da rede, carteira pessoal watch-only, transferências por PSBT e operações de custódia conforme as permissões e a configuração do ambiente. Em `BTC_MODE=demo`, operações reais de carteira ficam indisponíveis.
 
