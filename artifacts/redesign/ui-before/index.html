@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="BitLoja — produtos independentes e pagamentos em Bitcoin.">
+  <meta name="theme-color" content="#00a5f4">
+  <title>BitLoja — marketplace em Bitcoin</title>
+  <link rel="preload" href="{{ url_for('static', filename='fonts/archivo-variable-latin.woff2') }}" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="{{ url_for('static', filename='fonts/jetbrains-mono-variable-latin.woff2') }}" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="{{ url_for('static', filename='icons/bootstrap-icons.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/bitloja.css') }}">
+  <script defer src="{{ url_for('static', filename='js/bitloja.js') }}"></script>
+</head>
+<body data-btc-network="{{ btc_network|e }}" data-btc-mode="{{ btc_mode|e }}">
+  <a class="skip-link" href="#main">Pular para o conteúdo</a>
+  <header class="site-header" id="siteHeader">
+    <div class="header-main shell">
+      <a class="brand" href="/" data-action="home" aria-label="BitLoja — início">
+        <span class="brand-mark" aria-hidden="true"><i class="bi bi-box-seam"></i></span>
+        <span>BitLoja</span>
+      </a>
+      <nav class="primary-nav" id="primaryNav" aria-label="Navegação principal">
+        <button class="nav-link active" type="button" data-view="home">Início</button>
+        <button class="nav-link" type="button" data-view="catalog">Produtos</button>
+        <button class="nav-link" type="button" data-scroll="howItWorks">Como funciona</button>
+        <button class="nav-link" type="button" data-view="reviews">Avaliações</button>
+      </nav>
+      <span class="network-status" title="Configuração atual do servidor">{{ btc_network|e }} · {{ btc_mode|e }}</span>
+      <div class="header-actions">
+        <button class="icon-button search-toggle" id="searchToggle" type="button" data-action="search-toggle" aria-label="Abrir busca" aria-expanded="false" aria-controls="searchForm">
+          <i class="bi bi-search" aria-hidden="true"></i>
+        </button>
+        <button class="icon-button notifications-button hidden" id="notificationsBtn" type="button" data-action="notifications" aria-label="Notificações" aria-haspopup="dialog">
+          <i class="bi bi-bell" aria-hidden="true"></i><span class="notification-dot hidden" id="notificationBadge" aria-label="Notificações não lidas"></span>
+        </button>
+        <button class="header-button" id="accountBtn" type="button" data-action="account-menu" aria-haspopup="dialog">
+          <i class="bi bi-person-circle" aria-hidden="true"></i><span id="accountLabel">Entrar</span>
+        </button>
+        <button class="button header-shop-cta" id="headerShopBtn" type="button" data-action="sell">Abrir minha loja</button>
+        <button class="icon-button cart-button hidden" id="cartBtn" type="button" data-action="cart" aria-label="Carrinho">
+          <i class="bi bi-bag" aria-hidden="true"></i><span class="cart-count" id="cartBadge">0</span>
+        </button>
+        <button class="icon-button mobile-menu-button" id="mobileMenuBtn" type="button" data-action="menu" aria-label="Abrir navegação" aria-expanded="false" aria-controls="primaryNav">
+          <i class="bi bi-list" aria-hidden="true"></i>
+        </button>
+      </div>
+      <form class="global-search" id="searchForm" role="search" aria-label="Buscar no marketplace">
+        <i class="bi bi-search" aria-hidden="true"></i>
+        <label class="sr-only" for="searchInput">Buscar produtos, categorias ou lojas</label>
+        <input id="searchInput" name="q" type="search" autocomplete="off" placeholder="Buscar produtos, categorias ou lojas...">
+        <button class="search-submit" type="submit" aria-label="Buscar"><i class="bi bi-arrow-return-left" aria-hidden="true"></i></button>
+      </form>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="page home-page" id="homeView">
+      <div class="home-hero shell">
+        <div class="hero-copy">
+          <p class="eyebrow hero-eyebrow"><span class="eyebrow-rule" aria-hidden="true"></span><span>Marketplace nativo<br>em Bitcoin</span></p>
+          <h1 class="hero-title"><span>COMPRE,</span><span>VENDA E</span><span>LIQUIDE EM</span><span class="title-ink">BTC.</span></h1>
+          <div class="hero-actions">
+            <button class="button button-light" id="shopNowBtn" type="button" data-action="catalog"><i class="bi bi-bag" aria-hidden="true"></i> Explorar produtos</button>
+            <button class="button button-outline" id="sellNowBtn" type="button" data-action="sell"><i class="bi bi-shop-window" aria-hidden="true"></i> Abrir minha loja</button>
+          </div>
+        </div>
+        <div class="hero-visual" aria-label="Ilustração da BitLoja">
+          <img class="hero-brush" src="{{ url_for('static', filename='assets/blue-brush.webp') }}" alt="" aria-hidden="true" fetchpriority="high">
+          <img class="hero-art" src="{{ url_for('static', filename='assets/bitcoin-bag.webp') }}" alt="Sacola de compras com símbolo Bitcoin" fetchpriority="high">
+          <p class="hero-note"><span>Liberdade</span><span>de verdade</span><i class="bi bi-arrow-down-left" aria-hidden="true"></i></p>
+        </div>
+        <div class="hero-bottomline" aria-label="Recursos da plataforma">
+          <div class="hero-feature"><i class="bi bi-shield-check" aria-hidden="true"></i><span>Checkout Bitcoin<br>por pedido</span></div>
+          <div class="hero-feature"><i class="bi bi-lightning-charge" aria-hidden="true"></i><span>On-chain ou<br>Lightning*</span></div>
+          <div class="hero-feature"><i class="bi bi-shop" aria-hidden="true"></i><span>Lojas e produtos<br>independentes</span></div>
+          <div class="hero-feature runtime-feature"><i class="bi bi-globe2" aria-hidden="true"></i><span id="heroRuntime">REDE {{ btc_network|e }} · {{ btc_mode|e }}</span></div>
+        </div>
+      </div>
+
+      <section class="section shell how-section" id="howItWorks">
+        <div class="section-heading">
+          <div><p class="eyebrow"><span class="eyebrow-rule" aria-hidden="true"></span> Pagamento e pedido</p><h2>Como funciona</h2></div>
+          <p>Cada etapa acompanha o estado real devolvido pelo servidor.</p>
+        </div>
+        <div class="how-grid">
+          <article class="how-card"><span class="how-number">01</span><i class="bi bi-bag-check" aria-hidden="true"></i><h3>Escolha seus produtos</h3><p>O carrinho separa itens por loja antes do checkout.</p></article>
+          <article class="how-card"><span class="how-number">02</span><i class="bi bi-currency-bitcoin" aria-hidden="true"></i><h3>Selecione pagamento</h3><p>Escrow on-chain 2-de-3 ou Lightning, quando habilitado.</p></article>
+          <article class="how-card"><span class="how-number">03</span><i class="bi bi-box-seam" aria-hidden="true"></i><h3>Acompanhe o pedido</h3><p>Veja pagamentos, mensagens e atualizações de entrega.</p></article>
+        </div>
+      </section>
+
+      <section class="section shell home-products" id="productsSection">
+        <div class="section-heading">
+          <div><p class="eyebrow"><span class="eyebrow-rule" aria-hidden="true"></span> Vitrine</p><h2>Produtos em destaque</h2></div>
+          <button class="text-link" type="button" data-action="catalog">Ver catálogo <i class="bi bi-arrow-up-right" aria-hidden="true"></i></button>
+        </div>
+        <div class="product-grid home-product-grid" id="productGrid" aria-live="polite"></div>
+      </section>
+
+      <section class="section shell stores-section" id="storesSection">
+        <div class="section-heading">
+          <div><p class="eyebrow"><span class="eyebrow-rule" aria-hidden="true"></span> Vendedores</p><h2>Lojas do marketplace</h2></div>
+          <p>Informações e avaliações exibidas conforme dados disponíveis.</p>
+        </div>
+        <div class="store-grid" id="storeGrid" aria-live="polite"></div>
+      </section>
+    </section>
+
+    <section class="page catalog-page hidden" id="catalogView">
+      <div class="shell catalog-layout">
+        <aside class="catalog-sidebar" aria-label="Categorias e filtros">
+          <div class="catalog-sidebar-heading"><p class="eyebrow"><span>Produtos<br>cadastrados</span><span class="eyebrow-rule" aria-hidden="true"></span></p><h1>Produtos<br>em <span class="title-ink">destaque.</span></h1></div>
+          <nav class="category-nav" id="categoryNav" aria-label="Categorias de produtos"><button class="category-link active" type="button" data-category="">Todos os produtos</button></nav>
+          <select class="sr-only" id="categoryFilter" aria-label="Categoria"></select>
+          <div class="sidebar-heading"><i class="bi bi-sliders" aria-hidden="true"></i><h2>Filtrar</h2><button class="text-link" type="button" id="resetFiltersBtn">Limpar</button></div>
+          <fieldset class="filter-group price-filter"><legend>Preço (BTC)</legend><div class="price-range"><label class="sr-only" for="priceMin">Preço mínimo em BTC</label><input class="field-control" id="priceMin" type="number" inputmode="decimal" min="0" step="0.00000001" placeholder="Mín."><span>—</span><label class="sr-only" for="priceMax">Preço máximo em BTC</label><input class="field-control" id="priceMax" type="number" inputmode="decimal" min="0" step="0.00000001" placeholder="Máx."></div></fieldset>
+          <label class="check-row"><input id="inStockFilter" type="checkbox"><span>Somente disponíveis</span></label>
+          <div class="filter-footnote"><i class="bi bi-info-circle" aria-hidden="true"></i><span>Preço e estoque são confirmados pelo servidor.</span></div>
+        </aside>
+        <div class="catalog-results">
+          <div class="catalog-toolbar"><p id="catalogResultCount" aria-live="polite">Carregando produtos</p><div class="catalog-toolbar-filters"><label class="sr-only" for="sortFilter">Ordenar por</label><select class="field-control" id="sortFilter"><option value="featured">Destaques</option><option value="sales">Mais vendidos</option><option value="rating">Melhor avaliados</option><option value="price_asc">Menor preço</option><option value="price_desc">Maior preço</option></select><span class="network-pill"><i class="bi bi-currency-bitcoin" aria-hidden="true"></i> BTC · {{ btc_network|e }}</span></div></div>
+          <div class="product-grid catalog-product-grid" id="catalogGrid" aria-live="polite"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="page reviews-page hidden" id="reviewsView">
+      <div class="shell page-shell">
+        <div class="page-intro"><div><p class="eyebrow"><span class="eyebrow-rule" aria-hidden="true"></span> Compras concluídas</p><h1>Avaliações <span class="title-ink">reais.</span></h1></div><p>Comentários publicados por compradores com pedido concluído.</p></div>
+        <div class="reviews-list" id="reviewsList" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <section class="page product-page hidden" id="productView"><div class="shell page-shell" id="productContent"></div></section>
+    <section class="page store-page hidden" id="storeView"><div class="shell page-shell" id="storeContent"></div></section>
+
+    <section class="page account-page hidden" id="accountView">
+      <div class="shell page-shell">
+        <div class="page-intro"><div><p class="eyebrow"><span class="eyebrow-rule" aria-hidden="true"></span> Sua conta</p><h1>Seus pedidos.</h1></div><p>Acompanhe pagamentos, entrega, avaliações e disputas.</p></div>
+        <div id="accountContent" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <section class="page cart-page hidden" id="cartView">
+      <div class="shell cart-shell">
+        <div class="cart-heading-row">
+          <div><p class="eyebrow"><span class="eyebrow-rule" aria-hidden="true"></span> Revise antes de finalizar</p><h1>Seu <span class="title-ink">carrinho.</span></h1></div>
+          <button class="text-link" type="button" data-action="catalog"><i class="bi bi-arrow-left" aria-hidden="true"></i> Continuar comprando</button>
+        </div>
+        <ol class="checkout-steps" aria-label="Etapas da compra"><li class="current"><span>1</span>Carrinho</li><li><span>2</span>Checkout</li><li><span>3</span>Pagamento</li><li><span>4</span>Confirmação</li></ol>
+        <div class="cart-layout">
+          <div class="cart-lines" id="cartLines" aria-live="polite"></div>
+          <aside class="cart-summary" id="cartSummary" aria-label="Resumo do pedido"></aside>
+        </div>
+      </div>
+    </section>
+
+    <section class="page wallet-page hidden" id="walletView"><div class="shell page-shell"><div class="page-intro"><div><p class="eyebrow"><span class="eyebrow-rule" aria-hidden="true"></span> Carteira Bitcoin</p><h1>Carteira e <span class="title-ink">movimentações.</span></h1></div><p>Estado e operações carregados pela API da carteira.</p></div><div id="walletContent" aria-live="polite"></div></div></section>
+
+    <section class="page custody-page hidden" id="custodyView"><div class="shell page-shell"><div class="page-intro"><div><p class="eyebrow"><span class="eyebrow-rule" aria-hidden="true"></span> Pagamentos</p><h1>Bitcoin, <span class="title-ink">sem atalhos.</span></h1></div><p>Entenda os métodos disponíveis neste servidor e configure sua chave pública.</p></div><div id="custodyContent" aria-live="polite"></div></div></section>
+
+    <section class="page dashboard-page hidden" id="sellerView">
+      <div class="dashboard-layout">
+        <aside class="dashboard-sidebar">
+          <a class="dashboard-brand" href="/" data-action="home"><span class="brand-mark"><i class="bi bi-box-seam" aria-hidden="true"></i></span><span>BitLoja</span></a>
+          <p class="sidebar-kicker">Painel do vendedor</p>
+          <nav class="dashboard-nav" aria-label="Navegação do vendedor">
+            <button class="dashboard-nav-link active" type="button" data-seller-tab="overview"><i class="bi bi-grid-1x2" aria-hidden="true"></i> Visão geral</button>
+            <button class="dashboard-nav-link" type="button" data-seller-tab="products"><i class="bi bi-box-seam" aria-hidden="true"></i> Produtos</button>
+            <button class="dashboard-nav-link" type="button" data-seller-tab="orders"><i class="bi bi-receipt" aria-hidden="true"></i> Pedidos</button>
+            <button class="dashboard-nav-link" type="button" data-seller-tab="store"><i class="bi bi-shop" aria-hidden="true"></i> Minha loja</button>
+            <button class="dashboard-nav-link" type="button" data-view="wallet"><i class="bi bi-wallet2" aria-hidden="true"></i> Carteira</button>
+            <button class="dashboard-nav-link" type="button" data-view="custody"><i class="bi bi-shield-lock" aria-hidden="true"></i> Bitcoin</button>
+            <button class="dashboard-nav-link" type="button" data-action="home"><i class="bi bi-arrow-up-right-square" aria-hidden="true"></i> Ver marketplace</button>
+          </nav>
+          <div class="sidebar-profile" id="sellerIdentity"></div>
+          <p class="sidebar-runtime">REDE · {{ btc_network|e }} / {{ btc_mode|e }}</p>
+        </aside>
+        <div class="dashboard-main">
+          <div class="dashboard-topbar"><span class="dashboard-search-label"><i class="bi bi-search" aria-hidden="true"></i> Loja, produtos e pedidos</span><div class="dashboard-actions"><button class="icon-button" type="button" data-action="notifications" aria-label="Notificações"><i class="bi bi-bell" aria-hidden="true"></i></button><button class="header-button" type="button" data-action="account-menu"><i class="bi bi-person-circle" aria-hidden="true"></i><span id="sellerTopLabel">Conta</span></button></div></div>
+          <div class="dashboard-content" id="sellerContent" aria-live="polite"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="page dashboard-page hidden" id="adminView">
+      <div class="dashboard-layout">
+        <aside class="dashboard-sidebar">
+          <a class="dashboard-brand" href="/" data-action="home"><span class="brand-mark"><i class="bi bi-box-seam" aria-hidden="true"></i></span><span>BitLoja</span></a>
+          <p class="sidebar-kicker">Administração · controle</p>
+          <nav class="dashboard-nav" aria-label="Navegação administrativa">
+            <button class="dashboard-nav-link active" type="button" data-admin-tab="overview"><i class="bi bi-grid-1x2" aria-hidden="true"></i> Visão geral</button>
+            <button class="dashboard-nav-link" type="button" data-admin-tab="settlements"><i class="bi bi-arrow-left-right" aria-hidden="true"></i> Liquidações</button>
+            <button class="dashboard-nav-link" type="button" data-admin-tab="treasury"><i class="bi bi-safe2" aria-hidden="true"></i> Tesouraria</button>
+            <button class="dashboard-nav-link" type="button" data-admin-tab="disputes"><i class="bi bi-shield-exclamation" aria-hidden="true"></i> Disputas</button>
+            <button class="dashboard-nav-link" type="button" data-admin-tab="users"><i class="bi bi-people" aria-hidden="true"></i> Usuários e lojas</button>
+            <button class="dashboard-nav-link" type="button" data-admin-tab="audit"><i class="bi bi-journal-text" aria-hidden="true"></i> Auditoria</button>
+            <button class="dashboard-nav-link" type="button" data-view="wallet"><i class="bi bi-wallet2" aria-hidden="true"></i> Carteira</button>
+            <button class="dashboard-nav-link" type="button" data-view="custody"><i class="bi bi-shield-lock" aria-hidden="true"></i> Bitcoin</button>
+            <button class="dashboard-nav-link" type="button" data-action="home"><i class="bi bi-arrow-up-right-square" aria-hidden="true"></i> Ver marketplace</button>
+          </nav>
+          <div class="sidebar-profile" id="adminIdentity"></div>
+          <p class="sidebar-runtime">REDE · {{ btc_network|e }} / {{ btc_mode|e }}</p>
+        </aside>
+        <div class="dashboard-main">
+          <div class="dashboard-topbar"><span class="dashboard-search-label"><i class="bi bi-search" aria-hidden="true"></i> Pedidos, usuários e pagamentos</span><div class="dashboard-actions"><button class="icon-button" type="button" data-action="notifications" aria-label="Notificações"><i class="bi bi-bell" aria-hidden="true"></i></button><button class="header-button" type="button" data-action="account-menu"><i class="bi bi-person-circle" aria-hidden="true"></i><span id="adminTopLabel">Conta</span></button></div></div>
+          <div class="dashboard-content" id="adminContent" aria-live="polite"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer" id="siteFooter"><div class="shell footer-inner"><a class="brand footer-brand" href="/" data-action="home"><span class="brand-mark"><i class="bi bi-box-seam" aria-hidden="true"></i></span><span>BitLoja</span></a><span>Bitcoin · {{ btc_network|e }} · {{ btc_mode|e }}</span><button class="text-link" type="button" data-view="custody">Como funcionam pagamentos</button></div></footer>
+  <div id="modalRoot"></div>
+  <div class="toast-stack" id="toastStack" role="status" aria-live="polite" aria-atomic="true"></div>
+</body>
+</html>

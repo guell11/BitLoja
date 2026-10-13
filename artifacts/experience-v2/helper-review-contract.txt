@@ -1,0 +1,13 @@
+OBJECTIVE
+Package experience-v2 against immutable current 46-file baseline. Restore all 46 baseline source files only inside fixed disposable rollback-test copy; remove only newly packaged paths. Produce reproducible ZIP, diff, SHA manifest/pin and isolated behavior checks.
+FILES
+artifacts/experience-v2/build_release.py
+artifacts/experience-v2/verify_release.py
+artifacts/experience-v2/restore_release.py
+artifacts/experience-v2/ROLLBACK.sh
+PATTERN TO FOLLOW
+Approved artifacts/redesign release helpers; retain path/inventory/hash/archive/protected-source guards.
+RESTRICTIONS
+No workspace-source restoration; fixed contained artifacts/experience-v2/rollback-test only. No database, environment secrets or private key copying. No old artifacts/redesign edits. Baseline checkpoint SHA256SUMS and checkpoint-manifest pins must match. Include new CSS/assets/tests from allowed source trees. Isolated test SQLite and fake/demo backend only; no live transactions. Review diff without implementation reasoning before any helper execution. Do not build final ZIP until root freezes source.
+DONE WHEN
+Baseline/modified HTTP/static/JS/unit checks pass with isolated SQLite. ZIP manifest/pin/inventory hashes pass. Rollback on staged copy restores exact 46-file baseline hashes and behavior, removes only new paths, and leaves source/protected hashes unchanged. ROLLBACK.sh runs via executable Bash wrapper.

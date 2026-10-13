@@ -1,0 +1,126 @@
+BITLOJA RELEASE VERIFICATION — FINAL
+
+SOURCE STATE
+Worktree: workingtree (no branch created); source frozen at final hashes below. Workspace remains modified after rollback-copy test.
+Report fields: static/js/bitloja.js — showView, syncFinancialShell, renderAdmin, renderSeller, renderWallet, loadCustody, productImage, openAuth, renderCart, submitTracking, focusViewDestination.
+Detailed fields: loginFormHtml, registerFormHtml, doLogin, doRegister, openModal, closeModal; auth/dashboard/cart/glass CSS; templates/index.html stylesheet links.
+Final JS SHA-256: `static/js/bitloja.js` — 69897EA3F4FBD95534E1B357B88304B14C4B72526A355392F64809BF9E97C115.
+Final glass CSS SHA-256: `static/css/glass.css` — FD6211E99A986771F2FF577AC8D3907C1A80EBFF24A979C2AEFF1C61B0385423.
+Independent review: PASS. Reviewed `financial-shell.patch` SHA-256 `a230dfa6a258ce623ae8dbe48cd35185e740c8df8ba57a573dab95fee5f1649c`, final JS hash above, template SHA-256 `94ef89318da68cd77fc4ef06a11461cf6312a41ed54b0f2d2af9a827dbabcd8b`, glass CSS hash above, glass styling diff SHA-256 `16c918a79ae58273e132ad92c9a3673c357d6646c55ff4433dd0ffda898bc576`, and glass CTA diff SHA-256 `c847e7610570d94881299e91e9b07737846189b8f80e6c7368eb8240af3b9b2f`.
+
+LATEST GLASS MOBILE QA (root-reported)
+- Admin wallet at 320 px: document width 320; content width 286; sidebar 140.5 px.
+- Custody at 320 px: document width 320; protocol width 286 px.
+- Buyer wallet at 390 px: document width 375 px; two metric columns at 166 px each.
+- Custody at 390 px: document width 375 px; protocol width 341 px; navigation scroll width 1008 px / client width 343 px.
+- All admin/seller financial views at 320/390 px: root reports no page overflow and correct role identity; document widths 320/375 px. No separate seller-mobile screenshot saved yet.
+- Buyer wallet: sidebar hidden and marketplace header visible.
+- Captures: artifacts/redesign/screenshots/wallet-320-glass-final.jpg, custody-320-glass-final.jpg, wallet-mobile-glass-final.jpg, custody-mobile-glass-final.jpg.
+- Cart at 390 px: document width 375; quantity increment/decrement returned 0.00198000/0.00099000 BTC matching API; console errors/warnings `[]`. Root reloaded after CSS fix and confirmed `Continuar comprando` background `rgba(255,255,255,.42)` with ink `rgb(0,20,69)`; `Tab` moved from that CTA to `Explorar produtos`. The primary remains white on #006da8. Recaptured screenshots: `cart-mobile-glass-final.jpg`, `cart-empty-mobile-glass-final.jpg`. No checkout/payment executed in this pass.
+- Keyboard routes: admin `Usuários e lojas` and seller Orders shortcuts focused visible buttons and opened their role views.
+- Comparisons saved: `admin-glass-comparison-final.jpg`, `seller-glass-comparison-final.jpg`, `glass-mobile-comparison-final.jpg`. Source pixel sizes preserved; panels padded only. Desktop captures appear soft; root accepts composition/contrast, with no active DOM filters reported. These are not pixel-fidelity comparisons.
+- Unit tests: `& 'C:/Users/guell/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe' -m unittest discover -s tests -q`; literal `Ran 14 tests in 28.357s` then `OK`; exit 0.
+- Scope: observed mobile and post-fix CTA checks passed; seller-specific mobile screenshot not saved. Prior navy captures remain historical.
+
+ARTIFACT PATHS
+MODIFIED_FILE: C:/Users/guell/Desktop/Nova pasta/BitLoja/artifacts/redesign/MODIFIED_FILE.zip
+DIFF_FILE: C:/Users/guell/Desktop/Nova pasta/BitLoja/artifacts/redesign/DIFF_FILE.patch
+VERIFICATION: C:/Users/guell/Desktop/Nova pasta/BitLoja/artifacts/redesign/VERIFICATION.txt
+ROLLBACK: C:/Users/guell/Desktop/Nova pasta/BitLoja/artifacts/redesign/ROLLBACK.sh
+
+BASELINE
+Command:
+$P='C:/Users/guell/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe'
+$V='C:/Users/guell/Desktop/Nova pasta/BitLoja/artifacts/redesign/verify_release.py'
+& $P $V --smoke baseline
+Input: immutable five-file baseline; isolated temporary SQLite database; HTTP GET /, /api/bootstrap, /api/products.
+Literal output: BASELINE_OK GET/=200 GET/api/bootstrap=200 GET/api/products=200 isolated_database=true
+Exit status: 0
+
+MODIFIED
+Command:
+$P='C:/Users/guell/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe'
+$V='C:/Users/guell/Desktop/Nova pasta/BitLoja/artifacts/redesign/verify_release.py'
+& $P $V --smoke modified --js
+Input: modified working tree at recorded final JS/CSS hashes; isolated temporary SQLite database; HTTP GET /, /api/bootstrap, /api/products; Node parse check for JavaScript.
+Literal output: MODIFIED_OK GET/=200 GET/api/bootstrap=200 GET/api/products=200 JS_PARSE_FILES=1 isolated_database=true
+Exit status: 0
+
+UNIT TESTS
+Command: & 'C:/Users/guell/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe' -m unittest discover -s tests -q
+Input: root test suite.
+Literal output:
+Ran 14 tests in 28.357s
+OK
+Exit status: 0
+
+RELEASE
+Command:
+$P='C:/Users/guell/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe'
+$B='C:/Users/guell/Desktop/Nova pasta/BitLoja/artifacts/redesign/build_release.py'
+& $P $B
+Input: frozen working tree; writes MODIFIED_FILE.zip, release-manifest.json, and DIFF_FILE.patch.
+Literal output: BUILD_OK archive=C:\Users\guell\Desktop\Nova pasta\BitLoja\artifacts\redesign\MODIFIED_FILE.zip files=46 excluded=1 manifest=C:\Users\guell\Desktop\Nova pasta\BitLoja\artifacts\redesign\release-manifest.json diff=C:\Users\guell\Desktop\Nova pasta\BitLoja\artifacts\redesign\DIFF_FILE.patch manifest_sha256=ADA0536BDC4ADE3A8D1947DABCA3FE214AF9AC742D438B89865C2E9348472298
+Exit status: 0
+
+ARCHIVE VERIFICATION
+Command:
+$P='C:/Users/guell/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe'
+$V='C:/Users/guell/Desktop/Nova pasta/BitLoja/artifacts/redesign/verify_release.py'
+& $P $V --archive
+Input: generated archive, embedded manifest, and sidecar manifest/diff hashes.
+Literal output: ARCHIVE_OK entries=46 sha256=01B4F295FA0AFF48D22342545FAADCB142D1F6C1599AEA2B9EA7B460C828052E
+Exit status: 0
+
+ROLLBACK STAGING
+Command:
+$P='C:/Users/guell/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe'
+$V='C:/Users/guell/Desktop/Nova pasta/BitLoja/artifacts/redesign/verify_release.py'
+& $P $V --rollback-test
+Input: hash-verified archive and fixed contained target `artifacts/redesign/rollback-test`.
+Literal output:
+ARCHIVE_OK entries=46 sha256=01B4F295FA0AFF48D22342545FAADCB142D1F6C1599AEA2B9EA7B460C828052E
+ROLLBACK_TEST_PREPARED target=C:\Users\guell\Desktop\Nova pasta\BitLoja\artifacts\redesign\rollback-test files=46 protected_source_paths=4
+Exit status: 0
+
+ROLLBACK
+Command:
+$P='C:/Users/guell/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe'
+$env:PYTHON=$P
+& 'C:/Program Files/Git/bin/bash.exe' 'C:/Users/guell/Desktop/Nova pasta/BitLoja/artifacts/redesign/ROLLBACK.sh'
+Input: hash-verified rollback test copy only; restore five baseline files and remove manifest-listed release files with matching known hashes.
+Literal output:
+ARCHIVE_OK entries=46 sha256=01B4F295FA0AFF48D22342545FAADCB142D1F6C1599AEA2B9EA7B460C828052E
+RESTORE_OK target=C:\Users\guell\Desktop\Nova pasta\BitLoja\artifacts\redesign\rollback-test baseline_files=5 removed_release_files=33
+Exit status: 0
+
+RESTORED COPY VERIFICATION
+Command:
+$P='C:/Users/guell/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe'
+$V='C:/Users/guell/Desktop/Nova pasta/BitLoja/artifacts/redesign/verify_release.py'
+$env:PYTHONDONTWRITEBYTECODE = '1'
+& $P $V --restored
+Input: restored rollback-test copy; isolated temporary SQLite database; HTTP smoke, JS parse, protected-source hashes.
+Literal output:
+ARCHIVE_OK entries=46 sha256=01B4F295FA0AFF48D22342545FAADCB142D1F6C1599AEA2B9EA7B460C828052E
+RESTORED_OK target=C:\Users\guell\Desktop\Nova pasta\BitLoja\artifacts\redesign\rollback-test GET/=200 GET/api/bootstrap=200 GET/api/products=200 files=13 removed_release_files=33 static_removed=true source_unchanged=true protected_unchanged=true
+Exit status: 0
+
+ENVIRONMENT CLEANUP
+PowerShell `PYTHON` and `PYTHONDONTWRITEBYTECODE` variables were removed after their respective commands.
+
+DEMO GATE
+`applyWalletModeGate()` presents the demo wallet controls as read-only. Root verified by code inspection that the server rejects the corresponding operations with HTTP 409; no HTTP POST was executed for this check.
+
+PROTECTION SCOPE
+`source_unchanged=true` and `protected_unchanged=true` cover only the rollback staging-to-restored interval. This does not establish historical database immutability.
+
+FINAL STATUS
+Package build, archive verification, rollback staging/execution, restored-copy smoke, and independent review passed. The source worktree remains modified; rollback ran only against `artifacts/redesign/rollback-test`.
+FINAL BROWSER QA
+- Preview PID 8572: GET `/` returned HTTP 200; GET `/static/css/glass.css` returned HTTP 200.
+- Admin wallet at 390px: document width 375px; metric columns 166px × 2.
+- Account control: accessible name `Abrir conta de Administrador`; `aria-haspopup="dialog"`.
+- Admin desktop at 1672px: document width 1672px; sidebar 257px; metric columns 326.781px × 4.
+- Captures: `artifacts/redesign/screenshots/wallet-mobile-release.jpg`; `artifacts/redesign/screenshots/wallet-desktop-release.jpg`.
+Preview PID 8572 was running during these checks.

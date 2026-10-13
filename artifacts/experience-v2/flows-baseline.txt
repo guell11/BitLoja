@@ -1,0 +1,226 @@
+node:assert:885
+    throw err;
+    ^
+
+AssertionError [ERR_ASSERTION]: Missing experience flow: resetPrivateState
+    at Object.<anonymous> (C:\Users\guell\Desktop\Nova pasta\BitLoja\tests\experience_flows.test.cjs:11:10)
+    at Module._compile (node:internal/modules/cjs/loader:1830:14)
+    at Object..js (node:internal/modules/cjs/loader:1961:10)
+    at Module.load (node:internal/modules/cjs/loader:1553:32)
+    at Module._load (node:internal/modules/cjs/loader:1355:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
+    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)
+    at node:internal/main/run_main_module:33:47 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: '(() => {\n' +
+    "  'use strict';\n" +
+    '\n' +
+    '  const $ = (selector, root = document) => root.querySelector(selector);\n' +
+    '  const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));\n' +
+    `  const esc = value => String(value ?? '').replace(/[&<>"']/g, character => ({\n` +
+    `    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'\n` +
+    '  })[character]);\n' +
+    '  const num = value => Number.isFinite(Number(value)) ? Number(value) : 0;\n' +
+    '  const idOf = value => Math.max(0, Math.trunc(num(value)));\n' +
+    '  const dateText = value => {\n' +
+    '    const date = value ? new Date(value) : null;\n' +
+    "    return date && !Number.isNaN(date.valueOf()) ? date.toLocaleString('pt-BR') : '—';\n" +
+    '  };\n' +
+    '  const short = (value, length = 18) => {\n' +
+    "    const text = String(value || '');\n" +
+    '    return text.length > length ? `${text.slice(0, Math.ceil(length / 2))}…${text.slice(-Math.floor(length / 2))}` : text;\n' +
+    '  };\n' +
+    '  const productPhotos = {\n' +
+    "    headset: '/static/assets/products/headset.webp',\n" +
+    "    keyboard: '/static/assets/products/keyboard.webp',\n" +
+    "    ssd: '/static/assets/products/ssd.webp',\n" +
+    "    watch: '/static/assets/products/watch.webp',\n" +
+    "    backpack: '/static/assets/products/backpack.webp',\n" +
+    "    lamp: '/static/assets/products/lamp.webp',\n" +
+    "    bottle: '/static/assets/products/bottle.webp',\n" +
+    "    organizer: '/static/assets/products/organizer.webp'\n" +
+    '  };\n' +
+    '  const statusLabels = {\n' +
+    "    awaiting_payment: 'Aguardando pagamento', partial: 'Pagamento parcial', paid: 'Pago',\n" +
+    "    processing: 'Em preparação', shipped: 'Enviado', completed: 'Concluído',\n" +
+    "    cancelled: 'Cancelado', refunded: 'Reembolsado', under_review: 'Em disputa',\n" +
+    "    resolved: 'Resolvida', draft: 'Rascunho', awaiting_signature: 'Assinatura pendente',\n" +
+    "    partially_signed: 'Parcialmente assinada', ready_to_broadcast: 'Pronta para transmissão',\n" +
+    "    broadcast: 'Transmitida', signed: 'Assinada', demo: 'Demonstração', offline: 'Offline',\n" +
+    "    unconfigured: 'Não configurada'\n" +
+    '  };\n' +
+    '  const state = {\n' +
+    "    csrf: '', user: null, products: [], stores: [], cartCount: 0, cart: null,\n" +
+    "    admin: null, seller: null, sellerTab: 'overview', adminTab: 'overview',\n" +
+    "    activeView: 'home', currentProduct: null, notifications: [], unreadCount: 0,\n" +
+    '    wallet: null, custody: null, searchOpen: false, mobileMenuOpen: false,\n' +
+    "    authRole: 'buyer', modalReturnFocus: null\n" +
+    '  };\n' +
+    '  const config = {\n' +
+    "    btcMode: document.body.dataset.btcMode || 'demo',\n" +
+    "    btcNetwork: document.body.dataset.btcNetwork || 'testnet',\n" +
+    "    custodyMode: 'demo', lightningMode: 'off', commissionSigningMode: 'offline'\n" +
+    '  };\n' +
+    '\n' +
+    '  function productImage(product) {\n' +
+    "    const text = `${product?.name || ''} ${product?.category || ''}`.toLocaleLowerCase('pt-BR');\n" +
+    "    const key = text.includes('head') ? 'headset' : text.includes('tecl') ? 'keyboard' :\n" +
+    "      text.includes('ssd') || text.includes('hardware') ? 'ssd' :\n" +
+    "      text.includes('watch') || text.includes('wear') || text.includes('smartwatch') ? 'watch' :\n" +
+    "      text.includes('moch') || text.includes('backpack') ? 'backpack' :\n" +
+    "      text.includes('lumin') || text.includes('lamp') ? 'lamp' :\n" +
+    "      text.includes('garrafa') || text.includes('bottle') ? 'bottle' :\n" +
+    "      text.includes('organ') || text.includes('grid') ? 'organizer' : '';\n" +
+    "    const fallback = productPhotos[key] || '';\n" +
+    '    return safeImage(product?.image_url) || fallback;\n' +
+    '  }\n' +
+    '\n' +
+    '  async function api(path, options = {}) {\n' +
+    "    const method = String(options.method || 'GET').toUpperCase();\n" +
+    '    const headers = new Headers(options.headers || {});\n' +
+    "    if (method !== 'GET' && method !== 'HEAD') {\n" +
+    "      headers.set('X-CSRF-Token', state.csrf);\n" +
+    "      if (options.body && !(options.body instanceof FormData) && !headers.has('Content-Type')) {\n" +
+    "        headers.set('Content-Type', 'application/json');\n" +
+    '      }\n' +
+    '    }\n' +
+    "    const response = await fetch(path, { credentials: 'same-origin', ...options, method, headers });\n" +
+    "    const type = response.headers.get('content-type') || '';\n" +
+    "    const data = type.includes('application/json') ? await response.json().catch(() => ({})) : await response.text();\n" +
+    '    if (!response.ok) {\n' +
+    "      const message = typeof data === 'object' && data ? data.error || data.message : data;\n" +
+    '      throw new Error(message || `Erro ${response.status}`);\n' +
+    '    }\n' +
+    '    return data;\n' +
+    '  }\n' +
+    '\n' +
+    '  async function download(path, fallbackName) {\n' +
+    "    const response = await fetch(path, { credentials: 'same-origin', headers: { 'X-CSRF-Token': state.csrf } });\n" +
+    '    if (!response.ok) {\n' +
+    '      const body = await response.json().catch(() => ({}));\n' +
+    '      throw new Error(body.error || `Erro ${response.status}`);\n' +
+    '    }\n' +
+    "    const disposition = response.headers.get('content-disposition') || '';\n" +
+    '    const matchedName = disposition.match(/filename="?([^";]+)"?/i)?.[1];\n' +
+    '    const blob = await response.blob();\n' +
+    '    const url = URL.createObjectURL(blob);\n' +
+    "    const link = document.createElement('a');\n" +
+    '    link.href = url;\n' +
+    "    link.download = matchedName || fallbackName || 'arquivo.psbt';\n" +
+    '    document.body.append(link);\n' +
+    '    link.click();\n' +
+    '    link.remove();\n' +
+    '    URL.revokeObjectURL(url);\n' +
+    '  }\n' +
+    '\n' +
+    '  function downloadText(text, filename) {\n' +
+    "    if (!text) { toast('PSBT indisponível.', 'error'); return; }\n" +
+    "    const blob = new Blob([String(text)], { type: 'text/plain;charset=utf-8' });\n" +
+    '    const url = URL.createObjectURL(blob);\n' +
+    "    const link = document.createElement('a');\n" +
+    '    link.href = url;\n' +
+    "    link.download = filename || 'arquivo.psbt';\n" +
+    '    document.body.append(link);\n' +
+    '    link.click();\n' +
+    '    link.remove();\n' +
+    '    URL.revokeObjectURL(url);\n' +
+    '  }\n' +
+    '\n' +
+    "  function toast(message, type = 'success') {\n" +
+    "    const stack = $('#toastStack');\n" +
+    "    const item = document.createElement('div');\n" +
+    "    item.className = `toast ${type === 'error' ? 'error' : 'success'}`;\n" +
+    "    const heading = document.createElement('strong');\n" +
+    "    heading.textContent = type === 'error' ? 'Erro' : 'Concluído';\n" +
+    "    const body = document.createElement('div');\n" +
+    "    body.textContent = String(message || '');\n" +
+    '    item.append(heading, body);\n' +
+    '    stack.append(item);\n' +
+    '    window.setTimeout(() => item.remove(), 4200);\n' +
+    '  }\n' +
+    '\n' +
+    "  function setLoading(element, message = 'Carregando…') {\n" +
+    '    if (element) element.innerHTML = `<div class="empty"><i class="bi bi-arrow-repeat" aria-hidden="true"></i><p>${esc(message)}</p></div>`;\n' +
+    '  }\n' +
+    '\n' +
+    '  function statusTag(status) {\n' +
+    "    const normalized = String(status || '');\n" +
+    '    return `<span class="status ${esc(normalized)}">${esc(statusLabels[normalized] || normalized || \'—\')}</span>`;\n' +
+    '  }\n' +
+    '\n' +
+    '  function stars(rating) {\n' +
+    '    const count = Math.max(0, Math.min(5, Math.round(num(rating))));\n' +
+    '    return `<span class="stars" aria-label="Nota ${esc(rating || 0)} de 5">${Array.from({ length: 5 }, (_, i) => `<i class="bi ${i < count ? \'bi-star-fill\' : \'bi-star\'}" aria-hidden="true"></i>`).join(\'\')}</span>`;\n' +
+    '  }\n' +
+    '\n' +
+    '  function syncFinancialShell(view) {\n' +
+    '    const page = $(`#${view}View`);\n' +
+    '    if (!page) return false;\n' +
+    "    const role = state.user?.role || 'buyer';\n" +
+    "    const dashboardRole = ['seller', 'admin'].includes(role);\n" +
+    "    page.classList.toggle('dashboard-page', dashboardRole);\n" +
+    "    page.classList.toggle('financial-page--dashboard', dashboardRole);\n" +
+    "    page.classList.toggle('financial-page--buyer', !dashboardRole);\n" +
+    "    $$('[data-financial-role]', page).forEach(group => {\n" +
+    "      group.classList.toggle('hidden', group.dataset.financialRole !== role);\n" +
+    '    });\n' +
+    "    $$('[data-financial-name]', page).forEach(element => { element.textContent = state.user?.name || 'Conta'; });\n" +
+    "    $$('[data-financial-email]', page).forEach(element => { element.textContent = state.user?.email || ''; });\n" +
+    "    const context = $('[data-financial-context]', page);\n" +
+    "    if (context) context.textContent = view === 'wallet' ? 'Carteira Bitcoin' : 'Pagamentos Bitcoin';\n" +
+    "    const kicker = $('[data-financial-kicker]', page);\n" +
+    "    if (kicker) kicker.textContent = role === 'admin' ? 'Administração · controle' : role === 'seller' ? 'Painel do vendedor' : '';\n" +
+    "    const nav = $('[data-financial-nav]', page);\n" +
+    "    nav?.setAttribute('aria-label', role === 'admin' ? 'Navegação administrativa' : role === 'seller' ? 'Navegação do vendedor' : 'Navegação financeira');\n" +
+    "    $$('.dashboard-nav-link', page).forEach(link => {\n" +
+    '      const active = link.dataset.view === view\n' +
+    "        || (view === 'seller' && role === 'seller' && link.dataset.sellerTab === state.sellerTab)\n" +
+    "        || (view === 'admin' && role === 'admin' && link.dataset.adminTab === state.adminTab);\n" +
+    "      link.classList.toggle('active', active);\n" +
+    "      if (active) link.setAttribute('aria-current', 'page');\n" +
+    "      else link.removeAttribute('aria-current');\n" +
+    '    });\n' +
+    '    return dashboardRole;\n' +
+    '  }\n' +
+    '\n' +
+    '  function showView(name) {\n' +
+    '    const target = $(`#${name}View`);\n' +
+    '    if (!target) return;\n' +
+    "    if (['account', 'wallet', 'custody', 'seller', 'admin'].includes(name) && !state.user) {\n" +
+    "      openAuth('login');\n" +
+    '      return;\n' +
+    '    }\n' +
+    "    if (name === 'seller' && state.user?.role !== 'seller') {\n" +
+    '      sellAction();\n' +
+    '      return;\n' +
+    '    }\n' +
+    "    if (name === 'admin' && state.user?.role !== 'admin') {\n" +
+    "      toast('Painel disponível para a conta administrativa.', 'error');\n" +
+    "      showView('home');\n" +
+    '      return;\n' +
+    '    }\n' +
+    "    $$('#main > .page').forEach(page => page.classList.toggle('hidden', page !== target));\n" +
+    '    state.activeView = name;\n' +
+    "    const isFinancialView = ['wallet', 'custody'].includes(name);\n" +
+    '    const financialDashboard = isFinancialView ? syncFinancialShell(name) : false;\n' +
+    "    const isDashboard = ['seller', 'admin'].includes(name) || financialDashboard;\n" +
+    "    $('#siteHeader').classList.toggle('hidden', isDashboard);\n" +
+    "    $$('.nav-link[data-view]').forEach(link => link.classList.toggle('active', link.dataset.view === name));\n" +
+    "    $$('.dashboard-nav-link[data-view]').forEach(link => {\n" +
+    '      const active = link.dataset.view === name;\n' +
+    "      link.classList.toggle('active', active);\n" +
+    "      if (active) link.setAttribute('aria-current', 'page');\n" +
+    "      else link.removeAttribute('aria-current');\n" +
+    '    });\n' +
+    "    $('#siteFooter').classList.toggle('hidden', isDashboard);\n" +
+    '    closeMobileMenu();\n' +
+    "    window.scrollTo({ top: 0, behavior: 'smooth' });\n" +
+    "    if (name === 'catalog') loadProducts();\n" +
+    "    if (name === 'reviews') "... 137792 more characters,
+  expected: /function resetPrivateState\(/,
+  operator: 'match',
+  diff: 'simple'
+}
+
+Node.js v24.15.0

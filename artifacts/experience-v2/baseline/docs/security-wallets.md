@@ -1,0 +1,31 @@
+# Carteiras, pagamentos e trilha de pedido
+
+## Dados e modos
+
+`marketplace.db` original não foi usado por testes nem smoke deste trabalho. Os testes apontam `DATABASE_PATH` para diretório temporário. No startup normal, `init_db()` aplica migrações SQLite idempotentes ao banco configurado; migração acrescenta `reviews.purchase_verified` e tabelas de carteira watch-only, inputs reservados, notificações, endereços escrow e eventos de rastreio, sem reconstruir tabelas legadas.
+
+`ENABLE_DEMO_SEED=1` só semeia usuários e produtos quando `BTC_MODE=demo`, `CUSTODY_MODE=demo` e Lightning está `off` ou `demo`. Modo RPC não cria contas conhecidas. RPC real exige segredos fortes, `CUSTODY_MODE=multisig`, Lightning `off`, `lnd` ou `cln`, e `ALLOW_MAINNET=1` para mainnet. Segredos não entram em log de auditoria.
+
+Carteira pessoal e escrow são saldos diferentes. Cada conta recebe nome opaco aleatório para carteira Bitcoin Core separada, `disable_private_keys=true`, `blank=true`; servidor guarda descriptors públicos e nunca guarda chave privada. O endpoint `/api/wallet` lê saldo apenas dessa carteira. Saldo de escrow não entra em saldo pessoal; saldo seller só aparece quando Core reconhecer output da carteira pessoal após transmissão/confirmação. `pending_btc` mostra output não confirmado; `available_btc` subtrai UTXOs reservados e usa apenas saldo confirmado.
+
+Setup aceita dois descriptors ranged `wpkh(...)` com uma chave pública estendida cada, fingerprint declarada e mesma raiz/xpub nos dois. Chaves privadas WIF/xprv são rejeitadas antes da chamada de descriptor RPC; Core também precisa confirmar `hasprivatekeys=false`, `isrange=true`, `issolvable=true`. Fingerprint e hash do conjunto xpub são únicos entre contas. Import usa `timestamp=now` para não iniciar rescan histórico síncrono; fundos de endereços antigos exigem rescan operacional controlado antes de considerar saldo completo. Configuração de descriptor só ocorre uma vez pela API.
+
+## Endpoints
+
+- `GET /api/wallet` devolve carteira própria, endereço, balances Core, transfers e endereços próprios; demo sempre devolve zero.
+- `POST /api/wallet/setup` recebe `{descriptor, change_descriptor, password}`; `POST /api/wallet/addresses` deriva novo endereço receive.
+- `POST /api/wallet/transfers` recebe `{destination, amount_btc, password, idempotency_key}`. Só seller envia. Core cria PSBT com UTXOs confirmados (`minconf>=1`), `includeWatching`, `lockUnspents`, change próprio, e taxa paga pelo remetente; valor do destinatário não é reduzido pela taxa.
+- `GET /api/wallet/transfers/<id>/download` baixa conteúdo PSBT; `POST .../<id>/signed` combina assinatura externa e valida corpo unsigned, prevouts preservados, destino, valor, change próprio, taxa, `SIGHASH_ALL`, transação final e `testmempoolaccept`; `POST .../<id>/broadcast` exige senha e texto exato `ENVIAR BTC`; cancelamento só funciona para PSBT não assinada.
+- `GET /api/notifications` aceita `limit` e `before_id`; leitura é por dono e `read_at` não muda em leituras repetidas. Eventos cobrem pedido, pagamento, disputa, rastreio, avaliação e transferência.
+- `GET /api/orders/<id>/tracking` retorna snapshot mais eventos; `POST` exige status e para `shipped`, transportadora e código. Eventos são append-only. Fluxo é `paid → processing → shipped → completed`; fulfillment exige valor integral, `paid_at` e confirmações mínimas (Lightning exige estado provider `SETTLED`). Cancelamento demo só cabe em `awaiting_payment` com zero pago. Em `BTC_MODE=rpc`, pedido com invoice Lightning ou endereço on-chain ativo fica sem cancelamento até expiração/reconciliação; isso evita marcar como encerrado um destino ainda pagável. Admin não escreve `paid` ou `refunded` por rota de status.
+- `POST /api/reviews` só grava ou verifica uma avaliação quando buyer da sessão possui item em pedido completed, integralmente pago, confirmado/liquidado e sem refund. Uma avaliação por pedido/produto. Avaliações antigas permanecem `purchase_verified=0` até prova elegível; apenas `verified_reviews` participa de AVG/COUNT/store stats. Resposta pública usa campos curados e `purchase_verified:true`, sem IDs do buyer/pedido, e-mails ou dados de payout.
+
+Quando comprador e vendedor configuram carteira watch-only, checkout deriva nova pubkey de endereço novo para cada escrow. Sem carteira, a chave estática legada pode servir ao primeiro par; repetição do mesmo trio é recusada para não reutilizar endereço. Configure carteiras para novos pedidos. Endereço repetido em qualquer pedido também é recusado. Saque pessoal nunca usa UTXO/endereço de escrow.
+
+## Transação assinada
+
+Cada `idempotency_key` é única por vendedor e o corpo (destino/quantia) fica vinculado ao hash. `BEGIN IMMEDIATE` serializa reservas. Inputs permanecem reservados em tabela durável; índice parcial impede reservar ou gastar o mesmo outpoint duas vezes. Assinatura só é aceita se `decodepsbt` mantiver a transação aprovada; finalização requer signatures SIGHASH_ALL e Core verifica a transação no mempool. Estado `broadcasting`, txid e raw hex são persistidos antes de transmitir. Repetição consulta mempool/txid e retransmite o mesmo raw hex, nunca constrói pagamento substituto. Erros RPC retornam mensagem genérica sem texto do nó.
+
+Fundamentos de RPC usados: [Bitcoin Core `walletcreatefundedpsbt`](https://bitcoincore.org/en/doc/25.0.0/rpc/wallet/walletcreatefundedpsbt/) descreve `includeWatching`, `lockUnspents`, `minconf` e opções de fee; [Bitcoin Core `getdescriptorinfo`](https://bitcoincore.org/en/doc/28.0.0/rpc/util/getdescriptorinfo/) informa range, solvability e presença de chaves privadas; [Bitcoin Core `testmempoolaccept`](https://bitcoincore.org/en/doc/25.0.0/rpc/rawtransactions/testmempoolaccept/) valida aceitação da transação final; autorização de transação usa reautenticação e vinculação de dados descritas no [OWASP Transaction Authorization Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Transaction_Authorization_Cheat_Sheet.html).
+
+Mantenha RPC do Bitcoin Core em rede privada; não exponha porta RPC à internet. Execute `python -m unittest discover -s tests -v` para suite isolada. A revisão de release fica em `artifacts/redesign/VERIFICATION.txt`; `ROLLBACK.sh <diretório-alvo>` valida hash e restaura apenas caminhos do manifesto, sem remover banco, `.env` ou dados.

@@ -1,0 +1,243 @@
+--- a/static/js/bitloja.js
++++ b/static/js/bitloja.js
+@@ -86,14 +86,18 @@
+   }
+ 
+   async function download(path, fallbackName) {
++    const sessionVersion = state.sessionVersion;
+     const response = await fetch(path, { credentials: 'same-origin', headers: { 'X-CSRF-Token': state.csrf } });
++    if (sessionVersion !== state.sessionVersion) throw new Error('Sessão atualizada. Consulte dados novamente.');
+     if (!response.ok) {
+       const body = await response.json().catch(() => ({}));
++      if (sessionVersion !== state.sessionVersion) throw new Error('Sessão atualizada. Consulte dados novamente.');
+       throw new Error(body.error || `Erro ${response.status}`);
+     }
+     const disposition = response.headers.get('content-disposition') || '';
+     const matchedName = disposition.match(/filename="?([^";]+)"?/i)?.[1];
+     const blob = await response.blob();
++    if (sessionVersion !== state.sessionVersion) throw new Error('Sessão atualizada. Consulte dados novamente.');
+     const url = URL.createObjectURL(blob);
+     const link = document.createElement('a');
+     link.href = url;
+@@ -542,6 +546,7 @@
+   }
+ 
+   function focusViewDestination(view, previousFocus = null) {
++    if (view === 'how') { focusIfVisible($('#howItWorksTitle')); return; }
+     restoreFocusTarget(previousFocus, $(`#${view}Content`) || $(`#${view}View`));
+   }
+ 
+@@ -2121,7 +2126,8 @@
+       event.preventDefault();
+       const target = $(`#${CSS.escape(scrollButton.dataset.scroll)}`);
+       if (!target) return;
+-      if (target.closest('#homeView') && state.activeView !== 'home') showView('home', { scroll: false });
++      if (target.closest('#howView') && state.activeView !== 'how') showView('how', { scroll: false });
++      else if (target.closest('#homeView') && state.activeView !== 'home') showView('home', { scroll: false });
+       focusIfVisible(target);
+       target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+       closeMobileMenu();
+--- a/templates/index.html
++++ b/templates/index.html
+@@ -28,7 +28,7 @@
+       <nav class="primary-nav" id="primaryNav" aria-label="Navegação principal">
+         <button class="nav-link active" type="button" data-view="home">Início</button>
+         <button class="nav-link" type="button" data-view="catalog">Produtos</button>
+-        <button class="nav-link" type="button" data-scroll="howItWorks">Como funciona</button>
++        <button class="nav-link" type="button" data-view="how">Como funciona</button>
+         <button class="nav-link" type="button" data-view="reviews">Avaliações</button>
+       </nav>
+       <span class="network-status" title="Configuração atual do servidor">{{ btc_network|e }} · {{ btc_mode|e }}</span>
+@@ -83,9 +83,27 @@
+         </div>
+       </div>
+ 
++      <section class="section shell home-products" id="productsSection">
++        <div class="section-heading">
++          <div><p class="eyebrow"><span class="eyebrow-rule" aria-hidden="true"></span> Vitrine</p><h2>Produtos em destaque</h2></div>
++          <button class="text-link" type="button" data-action="catalog">Ver catálogo <i class="bi bi-arrow-up-right" aria-hidden="true"></i></button>
++        </div>
++        <div class="product-grid home-product-grid" id="productGrid" aria-live="polite"></div>
++      </section>
++
++      <section class="section shell stores-section" id="storesSection">
++        <div class="section-heading">
++          <div><p class="eyebrow"><span class="eyebrow-rule" aria-hidden="true"></span> Vendedores</p><h2>Lojas do marketplace</h2></div>
++          <p>Informações e avaliações exibidas conforme dados disponíveis.</p>
++        </div>
++        <div class="store-grid" id="storeGrid" aria-live="polite"></div>
++      </section>
++    </section>
++
++    <section class="page how-page hidden" id="howView" aria-labelledby="howItWorksTitle">
+       <section class="section shell how-section" id="howItWorks" tabindex="-1" aria-labelledby="howItWorksTitle">
+         <div class="section-heading">
+-          <div><p class="eyebrow"><span class="eyebrow-rule" aria-hidden="true"></span> Do carrinho à entrega</p><h2 id="howItWorksTitle">Como funciona.</h2></div>
++          <div><p class="eyebrow"><span class="eyebrow-rule" aria-hidden="true"></span> Do carrinho à entrega</p><h1 id="howItWorksTitle" tabindex="-1">Como funciona.</h1></div>
+           <p>Escolha, revise, pague e acompanhe. Um pedido por loja, sempre em Bitcoin.</p>
+         </div>
+         <div class="how-grid">
+@@ -102,22 +120,6 @@
+           <details><summary>Onde resolvo problema com pedido?</summary><p>Abra detalhes em Pedidos. Disputas disponíveis no estado do pedido mantêm conversa e decisão registradas; reembolso on-chain segue fluxo PSBT próprio.</p></details>
+         </div>
+         <div class="actions how-actions"><button class="btn btn-primary" type="button" data-action="catalog">Explorar produtos <i class="bi bi-arrow-right" aria-hidden="true"></i></button><button class="btn btn-secondary" type="button" data-view="custody">Entender caminhos Bitcoin</button></div>
+-      </section>
+-
+-      <section class="section shell home-products" id="productsSection">
+-        <div class="section-heading">
+-          <div><p class="eyebrow"><span class="eyebrow-rule" aria-hidden="true"></span> Vitrine</p><h2>Produtos em destaque</h2></div>
+-          <button class="text-link" type="button" data-action="catalog">Ver catálogo <i class="bi bi-arrow-up-right" aria-hidden="true"></i></button>
+-        </div>
+-        <div class="product-grid home-product-grid" id="productGrid" aria-live="polite"></div>
+-      </section>
+-
+-      <section class="section shell stores-section" id="storesSection">
+-        <div class="section-heading">
+-          <div><p class="eyebrow"><span class="eyebrow-rule" aria-hidden="true"></span> Vendedores</p><h2>Lojas do marketplace</h2></div>
+-          <p>Informações e avaliações exibidas conforme dados disponíveis.</p>
+-        </div>
+-        <div class="store-grid" id="storeGrid" aria-live="polite"></div>
+       </section>
+     </section>
+ 
+--- a/tests/experience_flows.test.cjs
++++ b/tests/experience_flows.test.cjs
+@@ -6,7 +6,7 @@
+ const root = path.resolve(__dirname, '..');
+ const sourcePath = process.argv[2] ? path.resolve(process.argv[2]) : path.join(root, 'static/js/bitloja.js');
+ const source = fs.readFileSync(sourcePath, 'utf8');
+-const exportsToTest = ['state', 'config', 'api', 'resetPrivateState', 'productImage', 'renderAccount', 'renderAccountOrders', 'openCheckout', 'submitCheckout', 'renderCheckoutOrders', 'openNotifications', 'markNotificationRead', 'markAllNotificationsRead', 'calculateReserveAllocation', 'btcStringToSats', 'satsToBtcText', 'treasurySection', 'updateProfileKeyFeedback'];
++const exportsToTest = ['state', 'config', 'api', 'download', 'resetPrivateState', 'productImage', 'renderAccount', 'renderAccountOrders', 'openCheckout', 'submitCheckout', 'renderCheckoutOrders', 'openNotifications', 'markNotificationRead', 'markAllNotificationsRead', 'calculateReserveAllocation', 'btcStringToSats', 'satsToBtcText', 'treasurySection', 'updateProfileKeyFeedback'];
+ for (const name of exportsToTest.filter(name => !['state', 'config'].includes(name))) {
+   assert.match(source, new RegExp(`function ${name}\\(`), `Missing experience flow: ${name}`);
+ }
+@@ -47,6 +47,10 @@
+ 
+ const nodes = new Map();
+ const handlers = new Map();
++let downloadClicks = 0;
++let downloadLinks = 0;
++let blobUrls = 0;
++let lastDownloadLink = null;
+ const node = selector => {
+   if (!nodes.has(selector)) nodes.set(selector, new Node(selector.replace(/^#/, '')));
+   return nodes.get(selector);
+@@ -56,7 +60,11 @@
+   activeElement: null,
+   querySelector: node,
+   querySelectorAll: () => [],
+-  createElement: () => new Node(),
++  createElement: tag => {
++    const element = new Node();
++    if (tag === 'a') { downloadLinks += 1; lastDownloadLink = element; element.click = () => { downloadClicks += 1; }; }
++    return element;
++  },
+   addEventListener: (event, handler) => handlers.set(event, handler)
+ };
+ document.body.dataset = { btcMode: 'demo', btcNetwork: 'regtest' };
+@@ -75,11 +83,15 @@
+   return response(entry);
+ };
+ const response = data => ({ ok: !data.error, status: data.error ? 400 : 200, headers: new Headers({ 'content-type': 'application/json' }), json: async () => data });
++class URLFixture extends URL {
++  static createObjectURL() { blobUrls += 1; return 'blob:fixture'; }
++  static revokeObjectURL() {}
++}
+ const context = {
+   document, HTMLElement: Node, HTMLFormElement: Node, HTMLImageElement: Node, Element: Node,
+   window: { scrollTo: options => { context.lastScroll = options; }, setTimeout: () => 0, crypto: { randomUUID: () => 'test-id' } },
+   location: { origin: 'http://localhost' }, navigator: {}, CSS: { escape: String },
+-  Headers, URL, URLSearchParams, Blob, FormData: FormDataFixture, fetch: fetchFixture, console
++  Headers, URL: URLFixture, URLSearchParams, Blob, FormData: FormDataFixture, fetch: fetchFixture, console
+ };
+ const injected = source.replace(/  renderSession\(\);\s*bootstrap\(\);\s*\}\)\(\);\s*$/, `  globalThis.experience = { ${exportsToTest.join(', ')} };\n})();`);
+ assert.notEqual(injected, source, 'Test injection must replace startup only');
+@@ -217,19 +229,31 @@
+   x.updateProfileKeyFeedback();
+   assert.match(node('#profileKeyFeedback').textContent, /4\/66/);
+ });
+-test('Como funciona reveals home before scroll without competing scrollTo', () => {
++test('legacy Como funciona action reveals dedicated page before scrolling', () => {
+   const button = new Node();
+   button.dataset.scroll = 'howItWorks';
+   button.closestNodes.set('[data-scroll]', button);
+   const section = node('#howItWorks');
+-  section.closestNodes.set('#homeView', node('#homeView'));
++  section.closestNodes.set('#howView', node('#howView'));
+   x.state.activeView = 'account';
+   context.lastScroll = null;
+   handlers.get('click')({ target: button, preventDefault() {} });
+-  assert.equal(x.state.activeView, 'home');
++  assert.equal(x.state.activeView, 'how');
+   assert.equal(context.lastScroll, null);
+   assert.equal(section.scrollOptions.block, 'start');
+   assert.equal(document.activeElement, section);
++});
++test('dedicated Como funciona navigation focuses heading from every prior view', () => {
++  const button = new Node();
++  button.dataset.view = 'how';
++  button.closestNodes.set('[data-view]', button);
++  for (const prior of ['home', 'catalog', 'product', 'account', 'admin']) {
++    x.state.activeView = prior;
++    handlers.get('click')({ target: button, preventDefault() {} });
++    assert.equal(x.state.activeView, 'how');
++    assert.equal(document.activeElement, node('#howItWorksTitle'));
++    assert.equal(context.lastScroll.top, 0);
++  }
+ });
+ test('session change wipes private state and ignores late inbox response', async () => {
+   x.state.activeView = 'account';
+@@ -248,9 +272,52 @@
+   assert.equal(x.state.notifications.length, 0);
+   assert.equal(node('#notificationsContent').innerHTML, '');
+ });
++test('PSBT download rejects response arriving after account switch', async () => {
++  x.state.user = user;
++  let finishFetch;
++  const counts = [downloadClicks, downloadLinks, blobUrls];
++  responses = [() => new Promise(resolve => { finishFetch = resolve; })];
++  const pending = x.download('/api/wallet/transfers/1/download', 'private.psbt');
++  x.resetPrivateState();
++  x.state.user = { ...user, id: 2 };
++  finishFetch({ ok: true, headers: new Headers(), blob: async () => new Blob(['private fixture']) });
++  await assert.rejects(pending, /Sessão atualizada/);
++  assert.deepEqual([downloadClicks, downloadLinks, blobUrls], counts);
++});
++test('PSBT download rejects account switch during blob read', async () => {
++  x.state.user = user;
++  let finishBlob;
++  const counts = [downloadClicks, downloadLinks, blobUrls];
++  responses = [() => ({ ok: true, headers: new Headers(), blob: () => new Promise(resolve => { finishBlob = resolve; }) })];
++  const pending = x.download('/api/psbts/1/download', 'private.psbt');
++  await new Promise(resolve => setImmediate(resolve));
++  assert.equal(typeof finishBlob, 'function');
++  x.resetPrivateState();
++  x.state.user = { ...user, id: 2 };
++  finishBlob(new Blob(['private fixture']));
++  await assert.rejects(pending, /Sessão atualizada/);
++  assert.deepEqual([downloadClicks, downloadLinks, blobUrls], counts);
++});
++test('PSBT download preserves same-session credentials and download behavior', async () => {
++  const counts = [downloadClicks, downloadLinks, blobUrls];
++  responses = [() => ({ ok: true, headers: new Headers({ 'content-disposition': 'attachment; filename="server.psbt"' }), blob: async () => new Blob(['fixture']) })];
++  await x.download('/api/admin/commission/transfers/1/download', 'fallback.psbt');
++  assert.deepEqual([downloadClicks, downloadLinks, blobUrls], counts.map(count => count + 1));
++  assert.equal(requests.at(-1).options.credentials, 'same-origin');
++  assert.equal(requests.at(-1).options.headers['X-CSRF-Token'], x.state.csrf);
++  assert.equal(lastDownloadLink.download, 'server.psbt');
++  assert.equal(lastDownloadLink.isConnected, false);
++});
+ test('template exposes standalone pages and last experience stylesheet', () => {
+   const template = fs.readFileSync(path.join(root, 'templates/index.html'), 'utf8');
+-  for (const id of ['checkoutView', 'checkoutContent', 'notificationsView', 'notificationsContent', 'accountTitle', 'accountDescription']) assert.match(template, new RegExp(`id="${id}"`));
++  for (const id of ['checkoutView', 'checkoutContent', 'notificationsView', 'notificationsContent', 'accountTitle', 'accountDescription', 'howView', 'howItWorks', 'howItWorksTitle']) assert.match(template, new RegExp(`id="${id}"`));
++  assert.match(template, /data-view="how">Como funciona/);
++  assert.match(template, /<h1 id="howItWorksTitle"/);
++  const home = template.slice(template.indexOf('id="homeView"'), template.indexOf('id="howView"'));
++  assert.doesNotMatch(home, /id="howItWorks"|class="how-card"|class="how-faq"/);
++  const how = template.slice(template.indexOf('id="howView"'), template.indexOf('id="catalogView"'));
++  assert.equal((how.match(/class="how-card"/g) || []).length, 4);
++  assert.equal((how.match(/<details>/g) || []).length, 5);
+   assert.ok(template.indexOf('css/experience.css') > template.indexOf('css/glass.css'));
+   const ids = [...template.matchAll(/\bid="([^"]+)"/g)].map(match => match[1]);
+   assert.equal(new Set(ids).size, ids.length, 'Template IDs must be unique');

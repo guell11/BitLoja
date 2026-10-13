@@ -20,6 +20,13 @@ from pathlib import Path
 from flask import Flask, Response, g, jsonify, render_template, request, session
 from werkzeug.security import check_password_hash, generate_password_hash
 
+from marketplace_features import (
+    init_marketplace_schema,
+    install_marketplace_features,
+    notify_order_parties,
+    notify_user,
+)
+
 
 BASE_DIR = Path(__file__).resolve().parent
 DATABASE_PATH = Path(os.getenv("DATABASE_PATH", BASE_DIR / "marketplace.db"))
@@ -35,6 +42,7 @@ ADMIN_ACTION_KEY = os.getenv("ADMIN_ACTION_KEY", "ALTERE-ESTA-CHAVE")
 PLATFORM_FEE_BPS = max(0, min(3000, int(os.getenv("PLATFORM_FEE_BPS", "250"))))
 MIN_CONFIRMATIONS = max(0, int(os.getenv("MIN_CONFIRMATIONS", "1")))
 COOKIE_SECURE = os.getenv("COOKIE_SECURE", "0") == "1"
+ENABLE_DEMO_SEED = os.getenv("ENABLE_DEMO_SEED", "0") == "1"
 
 # V3: custódia, PSBT e Lightning
 CUSTODY_MODE = os.getenv("CUSTODY_MODE", "demo").strip().lower()  # demo | multisig
@@ -80,12 +88,28 @@ def sats_to_btc(sats):
 
 def btc_to_sats(value):
     try:
-        amount = Decimal(str(value)).quantize(Decimal("0.00000001"), rounding=ROUND_DOWN)
+        amount = Decimal(str(value))
+        if not amount.is_finite():
+            raise InvalidOperation
+        quantized = amount.quantize(Decimal("0.00000001"), rounding=ROUND_DOWN)
     except (InvalidOperation, ValueError, TypeError):
         raise ValueError("Valor BTC inválido.")
     if amount < 0:
         raise ValueError("O valor não pode ser negativo.")
-    return int(amount * Decimal(100_000_000))
+    if amount != quantized:
+        raise ValueError("Valor BTC aceita no máximo oito casas decimais.")
+    if amount > Decimal("21000000"):
+        raise ValueError("Valor BTC excede o limite monetário.")
+    return int(quantized * Decimal(100_000_000))
+
+
+def request_json_object():
+    data = request.get_json(silent=True)
+    if data is None:
+        return {}
+    if not isinstance(data, dict):
+        raise ValueError("Corpo JSON deve ser objeto.")
+    return data
 
 
 def clean_text(value, max_len=255, required=False):
@@ -472,12 +496,16 @@ def init_db():
     add_column_if_missing(db, "settlement_batches", "final_hex", "TEXT NOT NULL DEFAULT ''")
     add_column_if_missing(db, "settlement_batches", "signing_mode", "TEXT NOT NULL DEFAULT 'psbt'")
     add_column_if_missing(db, "settlement_batches", "updated_at", "TEXT")
+    init_marketplace_schema(db, MIN_CONFIRMATIONS)
     db.commit()
-    seed_demo_data(db)
+    if ENABLE_DEMO_SEED and BTC_MODE == "demo" and CUSTODY_MODE == "demo" and LN_MODE in {"off", "demo"}:
+        seed_demo_data(db)
     db.close()
 
 
 def seed_demo_data(db):
+    if not (ENABLE_DEMO_SEED and BTC_MODE == "demo" and CUSTODY_MODE == "demo" and LN_MODE in {"off", "demo"}):
+        return
     if db.execute("SELECT COUNT(*) FROM users").fetchone()[0] > 0:
         return
     created = now_iso()
@@ -922,17 +950,25 @@ def serialize_psbt(row):
 
 
 def mark_lightning_settled(db, order, paid_sats, payload=None):
-    paid_sats = max(int(paid_sats or 0), order["total_sats"])
-    if order["status"] not in {"awaiting_payment", "partial"} and order["lightning_status"] == "SETTLED":
+    paid_sats = max(0, int(paid_sats or 0))
+    if order["status"] in {"cancelled", "refunded"}:
+        return False
+    funded = paid_sats >= int(order["total_sats"])
+    next_status = order["status"]
+    if order["status"] in {"awaiting_payment", "partial"}:
+        next_status = "paid" if funded else ("partial" if paid_sats else "awaiting_payment")
+    if (paid_sats == int(order["paid_sats"] or 0) and order["lightning_status"] == "SETTLED" and next_status == order["status"]):
         return False
     db.execute(
-        "UPDATE orders SET paid_sats=?,status='paid',lightning_status='SETTLED',paid_at=COALESCE(paid_at,?),updated_at=? WHERE id=?",
-        (paid_sats, now_iso(), now_iso(), order["id"]),
+        "UPDATE orders SET paid_sats=?,status=?,lightning_status='SETTLED',paid_at=CASE WHEN ? THEN COALESCE(paid_at,?) ELSE paid_at END,updated_at=? WHERE id=?",
+        (paid_sats, next_status, 1 if funded else 0, now_iso(), now_iso(), order["id"]),
     )
     db.execute(
         "INSERT INTO lightning_events(order_id,provider,event_type,payment_hash,amount_sats,payload_json,created_at) VALUES(?,?,?,?,?,?,?)",
-        (order["id"], order["lightning_provider"], "invoice_settled", order["lightning_hash"], paid_sats, json.dumps(payload or {}), now_iso()),
+        (order["id"], order["lightning_provider"], "invoice_settled" if funded else "invoice_underpaid", order["lightning_hash"], paid_sats, json.dumps({"state": "SETTLED", "paid_sats": paid_sats}), now_iso()),
     )
+    if funded and order["status"] in {"awaiting_payment", "partial"}:
+        notify_order_parties(db, order["id"], "payment", "Pagamento confirmado", "Pagamento integral confirmado.", "payment:confirmed")
     return True
 
 
@@ -956,6 +992,17 @@ def load_user_and_csrf():
         expected = session.get("csrf_token", "")
         if not supplied or not hmac.compare_digest(supplied, expected):
             return jsonify(error="Token CSRF inválido. Recarregue a página."), 403
+
+
+@app.after_request
+def security_response_headers(response):
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "same-origin")
+    if request.path.startswith("/api/"):
+        response.headers["Cache-Control"] = "no-store"
+        response.headers["Pragma"] = "no-cache"
+    return response
 
 
 def api_error(message, status=400):
@@ -1010,7 +1057,7 @@ def serialize_user(row):
 
 
 def store_stats(db, store_id):
-    rating = db.execute("SELECT COUNT(*) c,COALESCE(AVG(rating),0) avg FROM reviews WHERE store_id=?", (store_id,)).fetchone()
+    rating = db.execute("SELECT COUNT(*) c,COALESCE(AVG(rating),0) avg FROM verified_reviews WHERE store_id=?", (store_id,)).fetchone()
     orders = db.execute(
         """SELECT COUNT(*) total,
                   SUM(CASE WHEN status='completed' THEN 1 ELSE 0 END) completed,
@@ -1056,8 +1103,68 @@ def serialize_store(row, db=None):
         return None
     db = db or get_db()
     data = dict(row)
+    owner_id = data.get("owner_id")
+    if owner_id is None:
+        owner = db.execute("SELECT owner_id FROM stores WHERE id=?", (data["id"],)).fetchone()
+        owner_id = owner["owner_id"] if owner else None
+    if not g.user or (g.user["role"] != "admin" and g.user["id"] != owner_id):
+        data.pop("payout_address", None)
+        data.pop("escrow_pubkey", None)
     data.update(store_stats(db, data["id"]))
     return data
+
+
+def serialize_public_review(row):
+    return {
+        "id": row["id"],
+        "rating": row["rating"],
+        "title": row["title"],
+        "comment": row["comment"],
+        "created_at": row["created_at"],
+        "buyer_name": row["buyer_name"],
+        "product_name": row["product_name"] if "product_name" in row.keys() else "",
+        "purchase_verified": True,
+    }
+
+
+def order_is_funded(order):
+    if int(order["paid_sats"] or 0) < int(order["total_sats"] or 0) or not order["paid_at"]:
+        return False
+    if order["payment_method"] == "lightning":
+        return order["lightning_status"] == "SETTLED"
+    return int(order["confirmations"] or 0) >= max(1, MIN_CONFIRMATIONS)
+
+
+def transition_order_status(db, order, status, actor_id, carrier="", tracking_code="", note=""):
+    current = db.execute("SELECT * FROM orders WHERE id=?", (order["id"],)).fetchone()
+    if not current:
+        raise ValueError("Pedido não encontrado.")
+    if status == "cancelled":
+        if current["status"] != "awaiting_payment" or current["paid_sats"] != 0 or current["paid_at"] or current["refund_txid"]:
+            raise ValueError("Cancelamento permitido somente antes de qualquer pagamento.")
+        if BTC_MODE == "rpc" and current["payment_method"] in {"lightning", "onchain_multisig"}:
+            raise ValueError("Pedido com invoice ou endereço on-chain ativo exige expiração/reconciliação antes do cancelamento.")
+        db.execute("UPDATE orders SET status='cancelled',updated_at=? WHERE id=?", (now_iso(), current["id"]))
+        items = db.execute("SELECT product_id,quantity FROM order_items WHERE order_id=? AND product_id IS NOT NULL", (current["id"],)).fetchall()
+        for item in items:
+            db.execute("UPDATE products SET stock=stock+?,sales_count=MAX(0,sales_count-?) WHERE id=?", (item["quantity"], item["quantity"], item["product_id"]))
+    else:
+        next_status = {"paid": "processing", "processing": "shipped", "shipped": "completed"}
+        if status not in next_status.values() or next_status.get(current["status"]) != status:
+            raise ValueError("Transição de status fora do fluxo permitido.")
+        if not order_is_funded(current):
+            raise ValueError("Pedido exige pagamento integral confirmado antes do fulfillment.")
+        if status == "completed" and order_has_open_dispute(db, current["id"]):
+            raise ValueError("Há uma disputa aberta neste pedido.")
+        if status == "shipped" and (not carrier or not tracking_code):
+            raise ValueError("Envio exige transportadora e código de rastreio.")
+        db.execute("UPDATE orders SET status=?,updated_at=? WHERE id=?", (status, now_iso(), current["id"]))
+    event = db.execute(
+        """INSERT INTO order_tracking_events(order_id,status,carrier,tracking_code,note,actor_id,created_at)
+           VALUES(?,?,?,?,?,?,?)""",
+        (current["id"], status, carrier, tracking_code, note, actor_id, now_iso()),
+    )
+    notify_order_parties(db, current["id"], "tracking", "Atualização do pedido", f"Status do pedido: {status}.", f"tracking:{event.lastrowid}:{status}")
 
 
 def serialize_product(row):
@@ -1136,8 +1243,8 @@ def bootstrap():
 
 @app.post("/api/register")
 def register():
-    data = request.get_json(silent=True) or {}
     try:
+        data = request_json_object()
         name = clean_text(data.get("name"), 100, True)
         email = clean_text(data.get("email"), 160, True).lower()
         password = str(data.get("password") or "")
@@ -1162,15 +1269,49 @@ def register():
         return api_error(exc)
 
 
+_login_attempts = {}
+_login_attempts_lock = threading.Lock()
+
+
+def login_attempts(email, remote_addr, record=False, success=False):
+    now = time.time()
+    keys = ("ip:" + remote_addr, "email:" + email)
+    with _login_attempts_lock:
+        for key in list(_login_attempts):
+            _login_attempts[key] = [stamp for stamp in _login_attempts[key] if now - stamp < 900]
+            if not _login_attempts[key]:
+                _login_attempts.pop(key, None)
+        if success:
+            for key in keys:
+                _login_attempts.pop(key, None)
+            return False, 0
+        limited = any(len(_login_attempts.get(key, [])) >= 10 for key in keys)
+        if record:
+            for key in keys:
+                _login_attempts.setdefault(key, []).append(now)
+            if len(_login_attempts) > 5000:
+                oldest = sorted(_login_attempts, key=lambda k: _login_attempts[k][0] if _login_attempts[k] else now)[:1000]
+                for key in oldest:
+                    _login_attempts.pop(key, None)
+        return limited, max((900 - int(now - attempts[0]) for key in keys if (attempts := _login_attempts.get(key))), default=0)
+
+
 @app.post("/api/login")
 def login():
-    data = request.get_json(silent=True) or {}
+    try: data = request_json_object()
+    except ValueError as exc: return api_error(exc)
     email = clean_text(data.get("email"), 160).lower()
+    remote = request.remote_addr or "unknown"
+    limited, _retry = login_attempts(email, remote)
+    if limited: return api_error("Muitas tentativas. Aguarde e tente novamente.", 429)
     row = get_db().execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
     if not row or not check_password_hash(row["password_hash"], str(data.get("password") or "")):
+        login_attempts(email, remote, record=True)
         return api_error("E-mail ou senha inválidos.", 401)
     if not row["active"]:
+        login_attempts(email, remote, record=True)
         return api_error("Conta desativada.", 403)
+    login_attempts(email, remote, success=True)
     session.clear(); session["user_id"] = row["id"]; session["csrf_token"] = secrets.token_urlsafe(24)
     g.user = get_current_user(); log_action("login", "user", row["id"])
     return jsonify(message="Login realizado.", user=serialize_user(g.user), csrf_token=session["csrf_token"])
@@ -1201,9 +1342,9 @@ def list_products():
     order_sql = {"price_asc": "p.price_sats ASC", "price_desc": "p.price_sats DESC", "rating": "rating DESC", "sales": "p.sales_count DESC"}.get(sort, "p.sales_count DESC,p.id DESC")
     rows = get_db().execute(
         f"""SELECT p.*,s.name store_name,s.slug store_slug,
-                   COALESCE(AVG(r.rating),0) rating,COUNT(r.id) review_count
+                    COALESCE(AVG(r.rating),0) rating,COUNT(r.id) review_count
             FROM products p JOIN stores s ON s.id=p.store_id
-            LEFT JOIN reviews r ON r.product_id=p.id
+             LEFT JOIN verified_reviews r ON r.product_id=p.id
             WHERE {' AND '.join(where)} GROUP BY p.id ORDER BY {order_sql}""",
         params,
     ).fetchall()
@@ -1217,21 +1358,21 @@ def product_detail(product_id):
     row = db.execute(
         """SELECT p.*,s.name store_name,s.slug store_slug,s.description store_description,s.logo_url,s.banner_url,
                   COALESCE(AVG(r.rating),0) rating,COUNT(r.id) review_count
-           FROM products p JOIN stores s ON s.id=p.store_id LEFT JOIN reviews r ON r.product_id=p.id
+           FROM products p JOIN stores s ON s.id=p.store_id LEFT JOIN verified_reviews r ON r.product_id=p.id
            WHERE p.id=? AND p.active=1 AND s.active=1 GROUP BY p.id""",
         (product_id,),
     ).fetchone()
     if not row: return api_error("Produto não encontrado.", 404)
-    reviews = db.execute("SELECT r.*,u.name buyer_name FROM reviews r JOIN users u ON u.id=r.buyer_id WHERE r.product_id=? ORDER BY r.id DESC", (product_id,)).fetchall()
+    reviews = db.execute("SELECT r.*,u.name buyer_name,p.name product_name FROM verified_reviews r JOIN users u ON u.id=r.buyer_id JOIN products p ON p.id=r.product_id WHERE r.product_id=? ORDER BY r.id DESC", (product_id,)).fetchall()
     related = db.execute(
         """SELECT p.*,s.name store_name,s.slug store_slug,COALESCE(AVG(r.rating),0) rating,COUNT(r.id) review_count
-           FROM products p JOIN stores s ON s.id=p.store_id LEFT JOIN reviews r ON r.product_id=p.id
+           FROM products p JOIN stores s ON s.id=p.store_id LEFT JOIN verified_reviews r ON r.product_id=p.id
            WHERE p.active=1 AND s.active=1 AND p.id<>? AND (p.category=? OR p.store_id=?)
            GROUP BY p.id ORDER BY p.sales_count DESC,p.id DESC LIMIT 4""",
         (product_id, row["category"], row["store_id"]),
     ).fetchall()
     store = db.execute("SELECT * FROM stores WHERE id=?", (row["store_id"],)).fetchone()
-    return jsonify(product=serialize_product(row), store=serialize_store(store, db), reviews=[dict(r) for r in reviews], related=[serialize_product(r) for r in related])
+    return jsonify(product=serialize_product(row), store=serialize_store(store, db), reviews=[serialize_public_review(r) for r in reviews], related=[serialize_product(r) for r in related])
 
 
 @app.get("/api/stores")
@@ -1251,12 +1392,12 @@ def store_detail(store_id):
     if not store: return api_error("Loja não encontrada.", 404)
     products = db.execute(
         """SELECT p.*,s.name store_name,s.slug store_slug,COALESCE(AVG(r.rating),0) rating,COUNT(r.id) review_count
-           FROM products p JOIN stores s ON s.id=p.store_id LEFT JOIN reviews r ON r.product_id=p.id
+           FROM products p JOIN stores s ON s.id=p.store_id LEFT JOIN verified_reviews r ON r.product_id=p.id
            WHERE p.store_id=? AND p.active=1 GROUP BY p.id ORDER BY p.sales_count DESC,p.id DESC""",
         (store_id,),
     ).fetchall()
-    recent = db.execute("SELECT r.*,u.name buyer_name,p.name product_name FROM reviews r JOIN users u ON u.id=r.buyer_id JOIN products p ON p.id=r.product_id WHERE r.store_id=? ORDER BY r.id DESC LIMIT 10", (store_id,)).fetchall()
-    return jsonify(store=serialize_store(store, db), products=[serialize_product(p) for p in products], reviews=[dict(r) for r in recent])
+    recent = db.execute("SELECT r.*,u.name buyer_name,p.name product_name FROM verified_reviews r JOIN users u ON u.id=r.buyer_id JOIN products p ON p.id=r.product_id WHERE r.store_id=? ORDER BY r.id DESC LIMIT 10", (store_id,)).fetchall()
+    return jsonify(store=serialize_store(store, db), products=[serialize_product(p) for p in products], reviews=[serialize_public_review(r) for r in recent])
 
 
 @app.post("/api/store")
@@ -1403,8 +1544,8 @@ def update_cart():
 @app.post("/api/checkout")
 @login_required
 def checkout():
-    data = request.get_json(silent=True) or {}
     try:
+        data = request_json_object()
         shipping_name = clean_text(data.get("shipping_name"), 120, True)
         address = clean_text(data.get("shipping_address"), 220, True)
         city = clean_text(data.get("shipping_city"), 100, True)
@@ -1417,17 +1558,19 @@ def checkout():
         if refund_address and BTC_MODE == "rpc" and not rpc.validate_address(refund_address):
             raise ValueError("Endereço de reembolso inválido.")
         db = get_db()
+        db.execute("BEGIN IMMEDIATE")
         buyer_pubkey = clean_text(data.get("buyer_pubkey") or g.user["bitcoin_pubkey"], 80)
         if payment_method == "onchain_multisig":
-            if not valid_compressed_pubkey(buyer_pubkey):
+            buyer_wallet = db.execute("SELECT 1 FROM user_wallets WHERE user_id=?", (g.user["id"],)).fetchone()
+            if not valid_compressed_pubkey(buyer_pubkey) and not buyer_wallet:
                 raise ValueError("Cadastre a chave pública Bitcoin comprimida do comprador antes de criar um escrow.")
-            if buyer_pubkey != (g.user["bitcoin_pubkey"] or ""):
+            if valid_compressed_pubkey(buyer_pubkey) and buyer_pubkey != (g.user["bitcoin_pubkey"] or ""):
                 db.execute("UPDATE users SET bitcoin_pubkey=? WHERE id=?", (buyer_pubkey.lower(), g.user["id"]))
         elif LN_MODE == "off":
             raise ValueError("Lightning está desativado neste servidor.")
 
         rows = db.execute(
-            """SELECT c.quantity,p.*,s.active store_active,s.escrow_pubkey,s.payout_address
+            """SELECT c.quantity,p.*,s.active store_active,s.owner_id seller_user_id,s.escrow_pubkey,s.payout_address
                FROM cart_items c JOIN products p ON p.id=c.product_id
                JOIN stores s ON s.id=p.store_id WHERE c.user_id=?""",
             (g.user["id"],),
@@ -1452,11 +1595,25 @@ def checkout():
             custody_model = "noncustodial_2of3"
 
             if payment_method == "onchain_multisig":
-                seller_pubkey = clean_text(items[0]["escrow_pubkey"], 80)
+                derived_buyer = marketplace_features.fresh_escrow_pubkey(db, g.user["id"], reference)
+                derived_seller = marketplace_features.fresh_escrow_pubkey(db, items[0]["seller_user_id"], reference)
+                if derived_buyer:
+                    buyer_pubkey = derived_buyer
+                seller_pubkey = derived_seller or clean_text(items[0]["escrow_pubkey"], 80)
+                if BTC_MODE == "rpc" and (not derived_buyer or not derived_seller):
+                    reused = db.execute(
+                        """SELECT 1 FROM orders WHERE payment_method='onchain_multisig'
+                           AND buyer_pubkey=? AND seller_pubkey=? AND platform_pubkey=? LIMIT 1""",
+                        (buyer_pubkey.lower(), seller_pubkey.lower(), platform_escrow_pubkey()),
+                    ).fetchone()
+                    if reused:
+                        raise ValueError("Par de chaves estáticas já usada; configure carteira watch-only para derivação por pedido.")
                 if not valid_compressed_pubkey(seller_pubkey):
                     raise ValueError(f"A loja do produto {items[0]['name']} ainda não cadastrou uma chave pública escrow válida.")
                 escrow = create_multisig_escrow(reference, buyer_pubkey, seller_pubkey)
                 payment_address = escrow["address"]
+                if db.execute("SELECT 1 FROM orders WHERE payment_address=? LIMIT 1", (payment_address,)).fetchone():
+                    raise ValueError("Bitcoin Core reutilizou endereço escrow; configure chaves públicas novas.")
                 descriptor = escrow["descriptor"]
                 redeem_script = escrow.get("redeem_script", "")
                 witness_script = escrow.get("witness_script", "")
@@ -1487,12 +1644,16 @@ def checkout():
                 ),
             )
             order_id = cur.lastrowid
+            if payment_method == "onchain_multisig":
+                db.execute("INSERT INTO used_escrow_addresses(address,order_id,created_at) VALUES(?,?,?)", (payment_address, order_id, now_iso()))
             for item in items:
                 db.execute(
                     "INSERT INTO order_items(order_id,product_id,product_name,unit_price_sats,quantity) VALUES(?,?,?,?,?)",
                     (order_id, item["id"], item["name"], item["price_sats"], item["quantity"]),
                 )
-                db.execute("UPDATE products SET stock=stock-?,sales_count=sales_count+? WHERE id=?", (item["quantity"], item["quantity"], item["id"]))
+                changed = db.execute("UPDATE products SET stock=stock-?,sales_count=sales_count+? WHERE id=? AND stock>=? AND active=1", (item["quantity"], item["quantity"], item["id"], item["quantity"]))
+                if not changed.rowcount:
+                    raise ValueError(f"Estoque insuficiente: {item['name']}")
             if payment_method == "onchain_multisig":
                 db.execute(
                     "INSERT INTO wallet_events(order_id,event_type,amount_sats,address,status,details,created_at) VALUES(?,?,?,?,?,?,?)",
@@ -1503,6 +1664,7 @@ def checkout():
                     "INSERT INTO lightning_events(order_id,provider,event_type,payment_hash,amount_sats,payload_json,created_at) VALUES(?,?,?,?,?,?,?)",
                     (order_id, lightning_provider, "invoice_created", lightning_hash, total, json.dumps({"reference": reference}), now_iso()),
                 )
+            notify_order_parties(db, order_id, "order", "Pedido criado", "Novo pedido aguarda pagamento.", "order:created")
             orders.append({
                 "id": order_id,
                 "reference": reference,
@@ -1540,16 +1702,18 @@ def order_detail(order_id):
     db = get_db(); row = db.execute("SELECT o.*,s.name store_name,s.owner_id,u.name buyer_name FROM orders o JOIN stores s ON s.id=o.store_id JOIN users u ON u.id=o.buyer_id WHERE o.id=?", (order_id,)).fetchone()
     if not row or not can_access_order(row): return api_error("Pedido não encontrado.", 404)
     disputes = db.execute("SELECT d.*,u.name opened_by_name FROM disputes d JOIN users u ON u.id=d.opened_by WHERE d.order_id=? ORDER BY d.id DESC", (order_id,)).fetchall()
-    review_ids = [r[0] for r in db.execute("SELECT product_id FROM reviews WHERE order_id=?", (order_id,)).fetchall()]
+    review_ids = [r[0] for r in db.execute("SELECT product_id FROM reviews WHERE order_id=? AND purchase_verified=1", (order_id,)).fetchall()]
     return jsonify(order=serialize_order(row), disputes=[dict(d) for d in disputes], reviewed_product_ids=review_ids)
 
 
 def sync_one_order(db, order):
+    if order["status"] in {"cancelled", "refunded"}:
+        return False
     if order["payment_method"] == "lightning":
         result = lightning.lookup(order)
         state = str(result.get("state", "OPEN")).upper()
         if state in {"SETTLED", "PAID", "COMPLETE"}:
-            return mark_lightning_settled(db, order, result.get("paid_sats") or order["total_sats"], result.get("raw"))
+            return mark_lightning_settled(db, order, result.get("paid_sats", 0), result.get("raw"))
         if state in {"ACCEPTED"}:
             changed = order["lightning_status"] != state
             if changed:
@@ -1560,16 +1724,22 @@ def sync_one_order(db, order):
     pending = escrow_rpc.received_sats(order["payment_address"], 0)
     paid = max(confirmed, pending)
     status = "paid" if confirmed >= order["total_sats"] else ("partial" if paid > 0 else "awaiting_payment")
-    changed = paid != order["paid_sats"] or status != order["status"]
+    protected_status = order["status"] in {"processing", "shipped", "completed"}
+    if protected_status:
+        paid = max(paid, int(order["paid_sats"] or 0))
+        status = order["status"]
+    changed = paid != order["paid_sats"] or status != order["status"] or order["confirmations"] != (MIN_CONFIRMATIONS if confirmed else 0)
     if changed:
         db.execute(
-            "UPDATE orders SET paid_sats=?,confirmations=?,status=?,paid_at=CASE WHEN ?='paid' THEN COALESCE(paid_at,?) ELSE paid_at END,updated_at=? WHERE id=?",
-            (paid, MIN_CONFIRMATIONS if confirmed else 0, status, status, now_iso(), now_iso(), order["id"]),
+            "UPDATE orders SET paid_sats=?,confirmations=?,status=?,paid_at=CASE WHEN ? THEN COALESCE(paid_at,?) ELSE paid_at END,updated_at=? WHERE id=?",
+            (paid, MIN_CONFIRMATIONS if confirmed else 0, status, 1 if confirmed >= order["total_sats"] else 0, now_iso(), now_iso(), order["id"]),
         )
         db.execute(
             "INSERT INTO wallet_events(order_id,event_type,amount_sats,address,status,details,created_at) VALUES(?,?,?,?,?,?,?)",
             (order["id"], "multisig_payment_sync", paid, order["payment_address"], status, f"confirmed={confirmed}", now_iso()),
         )
+        if status == "paid" and order["status"] in {"awaiting_payment", "partial"} and confirmed >= order["total_sats"]:
+            notify_order_parties(db, order["id"], "payment", "Pagamento confirmado", "Pagamento integral confirmado.", "payment:confirmed")
     return changed
 
 
@@ -1586,28 +1756,43 @@ def sync_order(order_id):
 @app.post("/api/seller/orders/<int:order_id>/status")
 @roles_required("seller")
 def seller_order_status(order_id):
-    status = clean_text((request.get_json(silent=True) or {}).get("status"), 30)
+    try: data = request_json_object()
+    except ValueError as exc: return api_error(exc)
+    status = clean_text(data.get("status"), 30)
     if status not in {"processing","shipped","completed","cancelled"}: return api_error("Status inválido.")
     db = get_db(); store = seller_store(db); order = None if not store else db.execute("SELECT * FROM orders WHERE id=? AND store_id=?", (order_id, store["id"])).fetchone()
     if not order: return api_error("Pedido não encontrado.", 404)
-    if order["status"] in {"awaiting_payment","partial","refunded"}: return api_error("O pedido não pode ser alterado neste estado.", 409)
-    if order_has_open_dispute(db, order_id) and status == "completed": return api_error("Há uma disputa aberta neste pedido.", 409)
-    db.execute("UPDATE orders SET status=?,updated_at=? WHERE id=?", (status, now_iso(), order_id)); db.commit(); log_action("seller_order_status", "order", order_id, status)
+    try:
+        transition_order_status(db, order, status, g.user["id"], clean_text(data.get("carrier"), 120), clean_text(data.get("tracking_code"), 160), clean_text(data.get("note"), 1000))
+    except ValueError as exc:
+        db.rollback(); return api_error(exc, 409)
+    db.commit(); log_action("seller_order_status", "order", order_id, status)
     return jsonify(message="Status atualizado.")
 
 
 @app.post("/api/reviews")
 @roles_required("buyer")
 def create_review():
-    data = request.get_json(silent=True) or {}
     try:
+        data = request_json_object()
         order_id = int(data.get("order_id") or 0); product_id = int(data.get("product_id") or 0); rating = int(data.get("rating") or 0)
         title = clean_text(data.get("title"), 120); comment = clean_text(data.get("comment"), 1500, True)
         if rating < 1 or rating > 5: raise ValueError("A nota deve estar entre 1 e 5.")
         db = get_db(); order = db.execute("SELECT * FROM orders WHERE id=? AND buyer_id=?", (order_id, g.user["id"])).fetchone()
-        if not order or order["status"] != "completed": raise ValueError("Somente pedidos concluídos podem ser avaliados.")
-        if not db.execute("SELECT 1 FROM order_items WHERE order_id=? AND product_id=?", (order_id, product_id)).fetchone(): raise ValueError("Produto não pertence ao pedido.")
-        db.execute("INSERT INTO reviews(order_id,product_id,buyer_id,store_id,rating,title,comment,created_at) VALUES(?,?,?,?,?,?,?,?)", (order_id, product_id, g.user["id"], order["store_id"], rating, title, comment, now_iso()))
+        if not order or order["status"] != "completed" or not order_is_funded(order): raise ValueError("Somente pedidos concluídos e integralmente pagos podem ser avaliados.")
+        if order["refund_txid"]: raise ValueError("Pedido reembolsado não pode receber avaliação verificada.")
+        if not db.execute("SELECT 1 FROM order_items oi JOIN products p ON p.id=oi.product_id WHERE oi.order_id=? AND oi.product_id=? AND p.store_id=?", (order_id, product_id, order["store_id"])).fetchone(): raise ValueError("Produto não pertence ao pedido.")
+        existing = db.execute("SELECT id,buyer_id,store_id,purchase_verified FROM reviews WHERE order_id=? AND product_id=?", (order_id, product_id)).fetchone()
+        if existing:
+            if existing["buyer_id"] != g.user["id"] or existing["store_id"] != order["store_id"]:
+                raise ValueError("Avaliação existente não corresponde à compra autenticada.")
+            if existing["purchase_verified"]:
+                return api_error("Este item já foi avaliado.", 409)
+            db.execute("UPDATE reviews SET purchase_verified=1 WHERE id=?", (existing["id"],))
+        else:
+            db.execute("INSERT INTO reviews(order_id,product_id,buyer_id,store_id,rating,title,comment,created_at,purchase_verified) VALUES(?,?,?,?,?,?,?,?,1)", (order_id, product_id, g.user["id"], order["store_id"], rating, title, comment, now_iso()))
+        store = db.execute("SELECT owner_id FROM stores WHERE id=?", (order["store_id"],)).fetchone()
+        notify_user(db, store["owner_id"], "review", "Nova avaliação verificada", "Um pedido concluído recebeu avaliação.", order_id, f"order:{order_id}:review:{product_id}")
         db.commit(); log_action("review_create", "product", product_id, f"rating={rating}")
         return jsonify(message="Avaliação publicada."), 201
     except sqlite3.IntegrityError: return api_error("Este item já foi avaliado.", 409)
@@ -1626,6 +1811,7 @@ def create_dispute():
         if db.execute("SELECT 1 FROM disputes WHERE order_id=? AND status IN ('open','under_review')", (order_id,)).fetchone(): raise ValueError("Já existe uma disputa aberta para este pedido.")
         cur = db.execute("INSERT INTO disputes(order_id,opened_by,reason,description,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?)", (order_id, g.user["id"], reason, description, "open", now_iso(), now_iso()))
         db.execute("INSERT INTO dispute_messages(dispute_id,user_id,message,created_at) VALUES(?,?,?,?)", (cur.lastrowid, g.user["id"], description, now_iso()))
+        notify_order_parties(db, order_id, "dispute", "Disputa aberta", "Uma parte abriu disputa para este pedido.", f"dispute:{cur.lastrowid}:opened")
         db.commit(); log_action("dispute_open", "order", order_id, reason)
         return jsonify(message="Disputa aberta.", dispute_id=cur.lastrowid), 201
     except (ValueError, TypeError) as exc: return api_error(exc)
@@ -1739,9 +1925,16 @@ def create_order_psbt(order_id):
     if role == "platform" and not order_has_open_dispute(db, order_id):
         return api_error("O mediador só participa da assinatura quando existe disputa aberta.", 403)
     store = db.execute("SELECT * FROM stores WHERE id=?", (order["store_id"],)).fetchone()
-    seller_address = clean_text(data.get("seller_address") or store["payout_address"], 120)
+    seller_wallet_address = db.execute(
+        """SELECT a.address FROM user_wallets w JOIN wallet_addresses a ON a.wallet_id=w.id
+           WHERE w.user_id=? AND w.status='ready' AND a.purpose='receive' ORDER BY a.id DESC LIMIT 1""",
+        (store["owner_id"],),
+    ).fetchone()
+    seller_address = clean_text((seller_wallet_address["address"] if seller_wallet_address else None) or data.get("seller_address") or store["payout_address"], 120)
     buyer_address = clean_text(data.get("buyer_address") or order["buyer_refund_address"], 120)
     try:
+        if kind in {"release", "refund"} and not order_is_funded(order):
+            return api_error("PSBT exige pagamento integral confirmado.", 409)
         if CUSTODY_MODE == "demo" or BTC_MODE != "rpc":
             total_input = max(order["paid_sats"], order["total_sats"])
             if kind == "release" and not seller_address:
@@ -1868,7 +2061,9 @@ def broadcast_psbt(proposal_id):
     try:
         txid = ("demo_psbt_" + secrets.token_hex(16)) if CUSTODY_MODE == "demo" or BTC_MODE != "rpc" else escrow_rpc.broadcast_raw(proposal["final_hex"])
         if proposal["kind"] == "release":
-            db.execute("UPDATE orders SET status='processing',payout_txid=?,updated_at=? WHERE id=?", (txid, now_iso(), order["id"]))
+            if order["status"] == "paid":
+                transition_order_status(db, order, "processing", g.user["id"], note="Liberação escrow transmitida.")
+            db.execute("UPDATE orders SET payout_txid=?,updated_at=? WHERE id=?", (txid, now_iso(), order["id"]))
             db.execute(
                 "INSERT INTO wallet_events(order_id,event_type,amount_sats,address,txid,status,details,created_at) VALUES(?,?,?,?,?,?,?,?)",
                 (order["id"], "commission_output_created", proposal["commission_sats"], proposal["commission_address"], txid, "broadcast", proposal["reference"], now_iso()),
@@ -1933,12 +2128,24 @@ def lightning_webhook():
         order = db.execute("SELECT * FROM orders WHERE lightning_hash=? AND payment_method='lightning'", (payment_hash,)).fetchone()
     if not order:
         return api_error("Invoice não encontrada.", 404)
+    if payment_hash and not hmac.compare_digest(payment_hash.lower(), str(order["lightning_hash"]).lower()):
+        return api_error("Invoice não encontrada.", 404)
     if state not in {"SETTLED", "PAID", "COMPLETE"}:
         db.execute("UPDATE orders SET lightning_status=?,updated_at=? WHERE id=?", (state or "EVENT", now_iso(), order["id"]))
         db.commit()
         return jsonify(message="Evento registrado sem liquidação.")
-    paid_sats = int(data.get("paid_sats") or order["total_sats"])
-    changed = mark_lightning_settled(db, order, paid_sats, data)
+    try:
+        if order["lightning_provider"] == "demo":
+            paid_sats = int(data.get("paid_sats") or order["total_sats"])
+        else:
+            provider_state = lightning.lookup(order)
+            if str(provider_state.get("state", "")).upper() not in {"SETTLED", "PAID", "COMPLETE"}:
+                return api_error("Provedor não confirmou liquidação.", 409)
+            paid_sats = int(provider_state.get("paid_sats") or 0)
+        changed = mark_lightning_settled(db, order, paid_sats, {"provider": order["lightning_provider"]})
+    except (RuntimeError, ValueError, TypeError):
+        db.rollback()
+        return api_error("Provedor Lightning indisponível.", 502)
     db.commit()
     return jsonify(message="Liquidação Lightning registrada.", changed=changed)
 
@@ -2250,23 +2457,32 @@ def admin_mock_credit(order_id):
     if BTC_MODE != "demo": return api_error("Simulação disponível apenas no modo demo.", 409)
     db = get_db(); order = db.execute("SELECT * FROM orders WHERE id=?", (order_id,)).fetchone()
     if not order: return api_error("Pedido não encontrado.", 404)
+    if order["status"] not in {"awaiting_payment", "partial"}: return api_error("Crédito demo permitido somente antes do pagamento integral.", 409)
     data = request.get_json(silent=True) or {}
     try: amount = btc_to_sats(data.get("amount_btc")) if data.get("amount_btc") not in (None, "") else order["total_sats"] - order["paid_sats"]
     except ValueError as exc: return api_error(exc)
-    paid = order["paid_sats"] + max(0, amount); status = "paid" if paid >= order["total_sats"] else "partial"; txid = "demo_" + secrets.token_hex(16)
+    if amount <= 0: return api_error("Valor do crédito deve ser positivo.")
+    paid = order["paid_sats"] + amount; status = "paid" if paid >= order["total_sats"] else "partial"; txid = "demo_" + secrets.token_hex(16)
     db.execute("UPDATE orders SET paid_sats=?,confirmations=?,status=?,txid=?,paid_at=?,updated_at=? WHERE id=?", (paid, 1 if status == "paid" else 0, status, txid, now_iso() if status == "paid" else order["paid_at"], now_iso(), order_id))
     db.execute("INSERT INTO wallet_events(order_id,event_type,amount_sats,address,txid,status,details,created_at) VALUES(?,?,?,?,?,?,?,?)", (order_id, "mock_credit", amount, order["payment_address"], txid, status, "Pagamento fictício", now_iso()))
+    if status == "paid": notify_order_parties(db, order_id, "payment", "Pagamento confirmado", "Pagamento integral confirmado em modo demo.", "payment:confirmed")
     db.commit(); log_action("mock_credit", "order", order_id, f"amount={amount}"); return jsonify(message="Pagamento fictício registrado.", txid=txid, status=status)
 
 
 @app.post("/api/admin/orders/<int:order_id>/status")
 @roles_required("admin")
 def admin_order_status(order_id):
-    status = clean_text((request.get_json(silent=True) or {}).get("status"), 30)
-    allowed = {"awaiting_payment","partial","paid","processing","shipped","completed","cancelled","refunded"}
-    if status not in allowed: return api_error("Status inválido.")
-    db = get_db(); cur = db.execute("UPDATE orders SET status=?,updated_at=? WHERE id=?", (status, now_iso(), order_id)); db.commit()
-    if not cur.rowcount: return api_error("Pedido não encontrado.", 404)
+    try: data = request_json_object()
+    except ValueError as exc: return api_error(exc)
+    status = clean_text(data.get("status"), 30)
+    if status not in {"processing","shipped","completed","cancelled"}: return api_error("Status inválido.")
+    db = get_db(); order = db.execute("SELECT * FROM orders WHERE id=?", (order_id,)).fetchone()
+    if not order: return api_error("Pedido não encontrado.", 404)
+    try:
+        transition_order_status(db, order, status, g.user["id"], clean_text(data.get("carrier"), 120), clean_text(data.get("tracking_code"), 160), clean_text(data.get("note"), 1000))
+    except ValueError as exc:
+        db.rollback(); return api_error(exc, 409)
+    db.commit()
     log_action("order_status", "order", order_id, status); return jsonify(message="Status atualizado.")
 
 
@@ -2437,13 +2653,22 @@ def admin_refund(order_id):
     if not order: return api_error("Pedido não encontrado.", 404)
     if order["payment_method"] == "onchain_multisig":
         return api_error("Pedido multisig exige PSBT de devolução com duas assinaturas; o admin não pode mover o escrow diretamente.", 409)
+    if BTC_MODE != "rpc": return api_error("Reembolso exige transmissão Bitcoin real; modo demo não altera estado financeiro.", 409)
+    if order["status"] in {"cancelled", "refunded"} or not order_is_funded(order): return api_error("Reembolso exige pedido ativo integralmente pago.", 409)
     if order["refund_txid"]: return api_error("Reembolso já registrado.", 409)
     if not order["buyer_refund_address"]: return api_error("Comprador não informou endereço de reembolso.", 409)
     try:
-        amount = btc_to_sats(data.get("amount_btc") or sats_to_btc(min(order["paid_sats"], order["total_sats"])))
-        if amount <= 0 or amount > order["paid_sats"]: raise ValueError("Valor de reembolso inválido.")
-        txid = rpc.send_to(order["buyer_refund_address"], amount, f"Refund {order['reference']}") if BTC_MODE == "rpc" else "demo_refund_" + secrets.token_hex(16)
-        db.execute("UPDATE orders SET refund_txid=?,status='refunded',updated_at=? WHERE id=?", (txid, now_iso(), order_id)); db.execute("INSERT INTO wallet_events(order_id,event_type,amount_sats,address,txid,status,details,created_at) VALUES(?,?,?,?,?,?,?,?)", (order_id, "refund", amount, order["buyer_refund_address"], txid, "broadcast" if BTC_MODE=="rpc" else "demo", "Reembolso administrativo", now_iso())); db.commit(); log_action("order_refund", "order", order_id, txid)
+        amount = btc_to_sats(data.get("amount_btc") or sats_to_btc(order["paid_sats"]))
+        if amount != order["paid_sats"]: raise ValueError("Reembolso parcial não suportado; valor deve corresponder ao total recebido.")
+        db.execute("BEGIN IMMEDIATE")
+        current = db.execute("SELECT * FROM orders WHERE id=?", (order_id,)).fetchone()
+        if current["refund_txid"] or current["status"] in {"cancelled", "refunded"} or not order_is_funded(current):
+            db.rollback(); return api_error("Pedido mudou; reembolso não foi transmitido.", 409)
+        txid = rpc.send_to(current["buyer_refund_address"], amount, f"Refund {current['reference']}")
+        db.execute("UPDATE orders SET refund_txid=?,status='refunded',updated_at=? WHERE id=?", (txid, now_iso(), order_id))
+        db.execute("INSERT INTO wallet_events(order_id,event_type,amount_sats,address,txid,status,details,created_at) VALUES(?,?,?,?,?,?,?,?)", (order_id, "refund", amount, current["buyer_refund_address"], txid, "broadcast", "Reembolso integral administrativo", now_iso()))
+        notify_order_parties(db, order_id, "payment", "Reembolso transmitido", "Reembolso integral enviado à rede.", "refund:transmitted")
+        db.commit(); log_action("order_refund", "order", order_id, txid)
         return jsonify(message="Reembolso registrado.", txid=txid)
     except (ValueError, RuntimeError) as exc: db.rollback(); return api_error(exc, 502 if isinstance(exc, RuntimeError) else 400)
 
@@ -2457,7 +2682,9 @@ def resolve_dispute(dispute_id):
         if resolution not in {"release_seller","refund_buyer","partial_refund","agreement","closed_no_action"}: raise ValueError("Resolução inválida.")
         db = get_db(); dispute = db.execute("SELECT * FROM disputes WHERE id=?", (dispute_id,)).fetchone()
         if not dispute: return api_error("Disputa não encontrada.", 404)
-        db.execute("UPDATE disputes SET status='resolved',resolution=?,admin_note=?,updated_at=? WHERE id=?", (resolution, note, now_iso(), dispute_id)); db.execute("INSERT INTO dispute_messages(dispute_id,user_id,message,created_at) VALUES(?,?,?,?)", (dispute_id, g.user["id"], "Decisão administrativa: " + note, now_iso())); db.commit(); log_action("dispute_resolve", "dispute", dispute_id, resolution)
+        db.execute("UPDATE disputes SET status='resolved',resolution=?,admin_note=?,updated_at=? WHERE id=?", (resolution, note, now_iso(), dispute_id)); db.execute("INSERT INTO dispute_messages(dispute_id,user_id,message,created_at) VALUES(?,?,?,?)", (dispute_id, g.user["id"], "Decisão administrativa: " + note, now_iso()))
+        notify_order_parties(db, dispute["order_id"], "dispute", "Disputa encerrada", "Administrador encerrou a disputa.", f"dispute:{dispute_id}:resolved")
+        db.commit(); log_action("dispute_resolve", "dispute", dispute_id, resolution)
         return jsonify(message="Disputa resolvida. Transferências financeiras, quando aplicáveis, devem ser executadas em ação separada e auditada.")
     except ValueError as exc: return api_error(exc)
 
@@ -2521,6 +2748,27 @@ def too_large(_error):
 
 
 # Inicializa o esquema também quando o projeto é carregado por um servidor WSGI.
+def validate_live_configuration():
+    if BTC_MODE != "rpc":
+        return
+    if CUSTODY_MODE != "multisig" or LN_MODE == "demo":
+        raise RuntimeError("Configuração live exige custódia multisig e Lightning real ou desligado.")
+    if BTC_NETWORK in {"main", "mainnet"} and not ALLOW_MAINNET:
+        raise RuntimeError("Mainnet exige ALLOW_MAINNET=1.")
+    required = {
+        "APP_SECRET": (os.getenv("APP_SECRET", ""), 32),
+        "ADMIN_ACTION_KEY": (os.getenv("ADMIN_ACTION_KEY", ""), 32),
+        "BTC_RPC_PASSWORD": (os.getenv("BTC_RPC_PASSWORD", ""), 16),
+    }
+    if LN_MODE in {"lnd", "cln"}:
+        required["LIGHTNING_WEBHOOK_SECRET"] = (os.getenv("LIGHTNING_WEBHOOK_SECRET", ""), 32)
+    weak = [name for name, (value, minimum) in required.items() if len(value) < minimum or value.lower().startswith(("troque", "altere", "change-me", "replace-me"))]
+    if weak:
+        raise RuntimeError("Segredos obrigatórios ausentes ou fracos: " + ", ".join(weak))
+
+
+marketplace_features = install_marketplace_features(app, globals())
+validate_live_configuration()
 init_db()
 start_lightning_poller()
 

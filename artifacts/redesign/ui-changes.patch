@@ -1,0 +1,3568 @@
+diff --git a/static/css/bitloja.css b/static/css/bitloja.css
+--- a/static/css/bitloja.css
++++ b/static/css/bitloja.css
+@@ -703,3 +703,432 @@
+   .hero-title{font-size:clamp(47px,12vw,54px)}
+   .hero-visual{height:310px}
+ }
++
++#modalRoot .modal:not(.auth-modal) {
++  color: #001445;
++}
++
++#modalRoot .modal:not(.auth-modal) .modal-head {
++  position: sticky;
++  z-index: 3;
++  top: 0;
++  background: #f7fbff;
++}
++
++#modalRoot .modal:not(.auth-modal) .modal-body {
++  display: grid;
++  gap: 12px;
++  padding: 18px;
++}
++
++#modalRoot .modal:not(.auth-modal) .panel {
++  min-width: 0;
++  padding: 16px;
++  border: 1px solid #d5e1ec;
++  border-radius: 12px;
++  background: #fff;
++  color: #001445;
++  box-shadow: none;
++}
++
++#modalRoot .modal:not(.auth-modal) .panel h2,
++#modalRoot .modal:not(.auth-modal) .panel h3,
++#modalRoot .modal:not(.auth-modal) h3 {
++  color: #001445;
++}
++
++#modalRoot .modal:not(.auth-modal) .section {
++  margin-top: 0;
++}
++
++#modalRoot .modal:not(.auth-modal) .empty,
++#modalRoot .modal:not(.auth-modal) .summary-label {
++  color: #49637e;
++}
++
++#modalRoot .modal:not(.auth-modal) .big-price {
++  display: block;
++  margin: 8px 0;
++  color: #001445;
++  font: 800 clamp(19px, 3vw, 26px)/1.25 'JetBrains Mono', monospace;
++  overflow-wrap: anywhere;
++}
++
++#modalRoot .modal:not(.auth-modal) .mode-tag {
++  border-color: #c6d6e4;
++  background: #f2f7fb;
++  color: #49637e;
++}
++
++#modalRoot .modal:not(.auth-modal) .status {
++  background: #e9f3fa;
++  color: #124369;
++}
++
++#modalRoot .modal:not(.auth-modal) .status.paid,
++#modalRoot .modal:not(.auth-modal) .status.completed,
++#modalRoot .modal:not(.auth-modal) .status.resolved,
++#modalRoot .modal:not(.auth-modal) .status.broadcast,
++#modalRoot .modal:not(.auth-modal) .status.active {
++  background: #e6fff4;
++  color: #096044;
++}
++
++#modalRoot .modal:not(.auth-modal) .status.awaiting_payment,
++#modalRoot .modal:not(.auth-modal) .status.partial,
++#modalRoot .modal:not(.auth-modal) .status.open,
++#modalRoot .modal:not(.auth-modal) .status.draft,
++#modalRoot .modal:not(.auth-modal) .status.awaiting_signature {
++  background: #fff6d9;
++  color: #73540b;
++}
++
++#modalRoot .modal:not(.auth-modal) .status.processing,
++#modalRoot .modal:not(.auth-modal) .status.under_review,
++#modalRoot .modal:not(.auth-modal) .status.shipped,
++#modalRoot .modal:not(.auth-modal) .status.partially_signed {
++  background: #e9f5ff;
++  color: #17527c;
++}
++
++#modalRoot .modal:not(.auth-modal) .status.cancelled,
++#modalRoot .modal:not(.auth-modal) .status.refunded {
++  background: #fff0f2;
++  color: #9b172b;
++}
++
++#modalRoot .modal:not(.auth-modal) .btn {
++  min-width: 0;
++  min-height: 38px;
++  display: inline-flex;
++  align-items: center;
++  justify-content: center;
++  gap: 8px;
++  padding: 8px 12px;
++  border: 1px solid #c6d5e3;
++  border-radius: 9px;
++  background: #fff;
++  color: #123050;
++  font: 700 12px/1.25 Archivo, Arial, sans-serif;
++  text-align: center;
++  text-decoration: none;
++  cursor: pointer;
++  transition: background-color .15s ease, border-color .15s ease, color .15s ease;
++}
++
++#modalRoot .modal:not(.auth-modal) .btn:hover {
++  border-color: #8ba8bf;
++  background: #eef6fb;
++}
++
++#modalRoot .modal:not(.auth-modal) .btn-primary {
++  border-color: #006eaa;
++  background: #006eaa;
++  color: #fff;
++}
++
++#modalRoot .modal:not(.auth-modal) .btn-primary:hover {
++  border-color: #005989;
++  background: #005989;
++}
++
++#modalRoot .modal:not(.auth-modal) .btn-secondary {
++  border-color: #c6d5e3;
++  background: #f2f7fb;
++  color: #123050;
++}
++
++#modalRoot .modal:not(.auth-modal) .btn-danger {
++  border-color: #e6b5bf;
++  background: #fff1f3;
++  color: #9b172b;
++}
++
++#modalRoot .modal:not(.auth-modal) .btn-success {
++  border-color: #a8ddc5;
++  background: #e8fff4;
++  color: #135c3c;
++}
++
++#modalRoot .modal:not(.auth-modal) .btn:disabled,
++#modalRoot .modal:not(.auth-modal) .btn[aria-disabled="true"] {
++  opacity: .52;
++  cursor: not-allowed;
++}
++
++#modalRoot .modal:not(.auth-modal) .btn:focus-visible,
++#modalRoot .modal:not(.auth-modal) .modal-close:focus-visible,
++#modalRoot .modal:not(.auth-modal) input:focus-visible,
++#modalRoot .modal:not(.auth-modal) select:focus-visible,
++#modalRoot .modal:not(.auth-modal) textarea:focus-visible {
++  outline: 3px solid #4caee0;
++  outline-offset: 2px;
++}
++
++#modalRoot .modal:not(.auth-modal) .actions {
++  display: flex;
++  align-items: center;
++  flex-wrap: wrap;
++  gap: 8px;
++  margin-top: 12px;
++}
++
++#modalRoot .modal:not(.auth-modal) .actions .btn {
++  flex: 0 1 auto;
++  max-width: 100%;
++  overflow-wrap: anywhere;
++}
++
++#modalRoot .modal:not(.auth-modal) form {
++  min-width: 0;
++}
++
++#modalRoot .modal:not(.auth-modal) .tracking-form {
++  display: grid;
++  gap: 12px;
++}
++
++#modalRoot .modal:not(.auth-modal) .tracking-form h3 {
++  margin: 0;
++}
++
++#modalRoot .modal:not(.auth-modal) .field {
++  min-width: 0;
++  margin: 0 0 12px;
++}
++
++#modalRoot .modal:not(.auth-modal) .field:last-child {
++  margin-bottom: 0;
++}
++
++#modalRoot .modal:not(.auth-modal) .input,
++#modalRoot .modal:not(.auth-modal) .field-control,
++#modalRoot .modal:not(.auth-modal) input:not([type="hidden"]):not([type="radio"]):not([type="checkbox"]),
++#modalRoot .modal:not(.auth-modal) select,
++#modalRoot .modal:not(.auth-modal) textarea {
++  max-width: 100%;
++  border-color: #bdcadb;
++  background: #fff;
++  color: #001445;
++}
++
++#modalRoot .modal:not(.auth-modal) .keybox,
++#modalRoot .modal:not(.auth-modal) .address {
++  min-width: 0;
++  padding: 12px;
++  border: 1px solid #c6d8e7;
++  border-radius: 9px;
++  background: #eef6fb;
++  color: #123050;
++  font: 11px/1.55 'JetBrains Mono', monospace;
++  overflow-wrap: anywhere;
++  word-break: break-all;
++}
++
++#modalRoot .modal:not(.auth-modal) .keybox + .btn {
++  margin-top: 8px;
++}
++
++#modalRoot .modal:not(.auth-modal) .key-grid {
++  display: grid;
++  grid-template-columns: repeat(3, minmax(0, 1fr));
++  gap: 10px;
++}
++
++#modalRoot .modal:not(.auth-modal) .key-grid > div {
++  min-width: 0;
++  display: grid;
++  align-content: start;
++  gap: 6px;
++  padding: 11px;
++  border: 1px solid #dce6ef;
++  border-radius: 10px;
++  background: #f6f9fc;
++}
++
++#modalRoot .modal:not(.auth-modal) .key-grid small {
++  color: #536a82;
++  font-size: 10px;
++  font-weight: 700;
++  text-transform: uppercase;
++}
++
++#modalRoot .modal:not(.auth-modal) .key-grid code {
++  min-width: 0;
++  color: #123050;
++  font: 10px/1.5 'JetBrains Mono', monospace;
++  overflow-wrap: anywhere;
++  word-break: break-all;
++}
++
++#modalRoot .modal:not(.auth-modal) .kv,
++#modalRoot .modal:not(.auth-modal) .list-row {
++  min-width: 0;
++  display: grid;
++  grid-template-columns: minmax(96px, .42fr) minmax(0, 1fr);
++  align-items: start;
++  gap: 8px 14px;
++  padding: 10px 0;
++  border-bottom: 1px solid #e2eaf1;
++}
++
++#modalRoot .modal:not(.auth-modal) .kv > :first-child,
++#modalRoot .modal:not(.auth-modal) .list-row > :first-child {
++  color: #536a82;
++  font-size: 11px;
++  font-weight: 700;
++}
++
++#modalRoot .modal:not(.auth-modal) .kv > :last-child,
++#modalRoot .modal:not(.auth-modal) .list-row > :last-child {
++  min-width: 0;
++  color: #001445;
++  overflow-wrap: anywhere;
++  word-break: break-word;
++}
++
++#modalRoot .modal:not(.auth-modal) .stack {
++  min-width: 0;
++  display: grid;
++  gap: 12px;
++}
++
++#modalRoot .modal:not(.auth-modal) .order-detail-grid {
++  display: grid;
++  grid-template-columns: repeat(2, minmax(0, 1fr));
++  gap: 12px;
++}
++
++#modalRoot .modal:not(.auth-modal) .order-item-row {
++  min-width: 0;
++  display: grid;
++  grid-template-columns: minmax(0, 1fr) auto;
++  align-items: start;
++  gap: 12px;
++  padding: 10px 0;
++  border-top: 1px solid #e2eaf1;
++}
++
++#modalRoot .modal:not(.auth-modal) .order-item-row > span:first-child {
++  min-width: 0;
++  display: grid;
++  gap: 4px;
++}
++
++#modalRoot .modal:not(.auth-modal) .order-item-row strong {
++  color: #001445;
++  line-height: 1.35;
++  overflow-wrap: anywhere;
++}
++
++#modalRoot .modal:not(.auth-modal) .order-item-row small {
++  color: #536a82;
++}
++
++#modalRoot .modal:not(.auth-modal) .order-item-row > span:last-child {
++  color: #123050;
++  font: 700 11px/1.45 'JetBrains Mono', monospace;
++  text-align: right;
++  overflow-wrap: anywhere;
++}
++
++#modalRoot .modal:not(.auth-modal) .tracking-current {
++  display: grid;
++  grid-template-columns: repeat(2, minmax(0, 1fr));
++  gap: 10px;
++  margin: 10px 0 14px;
++}
++
++#modalRoot .modal:not(.auth-modal) .tracking-current > span {
++  min-width: 0;
++  display: grid;
++  gap: 4px;
++  padding: 10px;
++  border: 1px solid #dce6ef;
++  border-radius: 9px;
++  background: #f6f9fc;
++}
++
++#modalRoot .modal:not(.auth-modal) .tracking-current small {
++  color: #536a82;
++  font-size: 10px;
++  font-weight: 700;
++  text-transform: uppercase;
++}
++
++#modalRoot .modal:not(.auth-modal) .tracking-current strong,
++#modalRoot .modal:not(.auth-modal) .order-txid {
++  min-width: 0;
++  color: #123050;
++  font: 11px/1.5 'JetBrains Mono', monospace;
++  overflow-wrap: anywhere;
++  word-break: break-word;
++}
++
++#modalRoot .modal:not(.auth-modal) .tracking-timeline {
++  display: grid;
++  gap: 10px;
++  margin: 12px 0 16px;
++  padding: 0;
++  list-style: none;
++}
++
++#modalRoot .modal:not(.auth-modal) .tracking-timeline li {
++  min-width: 0;
++  display: grid;
++  grid-template-columns: 12px minmax(0, 1fr);
++  gap: 10px;
++  align-items: start;
++}
++
++#modalRoot .modal:not(.auth-modal) .tracking-timeline .timeline-dot {
++  width: 9px;
++  height: 9px;
++  margin-top: 5px;
++  border-radius: 50%;
++  background: #007fc8;
++  box-shadow: 0 0 0 3px #e0f3ff;
++}
++
++#modalRoot .modal:not(.auth-modal) .tracking-timeline li > div {
++  min-width: 0;
++  display: grid;
++  gap: 3px;
++}
++
++#modalRoot .modal:not(.auth-modal) .tracking-timeline small {
++  color: #536a82;
++}
++
++#modalRoot .modal:not(.auth-modal) .tracking-timeline p {
++  margin: 2px 0 0;
++  color: #263a59;
++  overflow-wrap: anywhere;
++}
++
++@media (max-width: 680px) {
++  #modalRoot .modal:not(.auth-modal) .modal-body {
++    gap: 10px;
++    padding: 13px;
++  }
++
++  #modalRoot .modal:not(.auth-modal) .panel {
++    padding: 13px;
++  }
++
++  #modalRoot .modal:not(.auth-modal) .order-detail-grid,
++  #modalRoot .modal:not(.auth-modal) .key-grid,
++  #modalRoot .modal:not(.auth-modal) .tracking-current {
++    grid-template-columns: minmax(0, 1fr);
++  }
++
++  #modalRoot .modal:not(.auth-modal) .kv,
++  #modalRoot .modal:not(.auth-modal) .list-row,
++  #modalRoot .modal:not(.auth-modal) .order-item-row {
++    grid-template-columns: minmax(0, 1fr);
++  }
++
++  #modalRoot .modal:not(.auth-modal) .order-item-row > span:last-child {
++    text-align: left;
++  }
++}
+diff --git a/static/js/bitloja.js b/static/js/bitloja.js
+--- a/static/js/bitloja.js
++++ b/static/js/bitloja.js
+@@ -39,7 +39,8 @@
+     csrf: '', user: null, products: [], stores: [], cartCount: 0, cart: null,
+     admin: null, seller: null, sellerTab: 'overview', adminTab: 'overview',
+     activeView: 'home', currentProduct: null, notifications: [], unreadCount: 0,
+-    wallet: null, custody: null, searchOpen: false, mobileMenuOpen: false
++    wallet: null, custody: null, searchOpen: false, mobileMenuOpen: false,
++    authRole: 'buyer', modalReturnFocus: null
+   };
+   const config = {
+     btcMode: document.body.dataset.btcMode || 'demo',
+@@ -167,8 +168,10 @@
+     }
+     $$('#main > .page').forEach(page => page.classList.toggle('hidden', page !== target));
+     state.activeView = name;
++    const isDashboard = ['seller', 'admin'].includes(name);
++    $('#siteHeader').classList.toggle('hidden', isDashboard);
+     $$('.nav-link[data-view]').forEach(link => link.classList.toggle('active', link.dataset.view === name));
+-    $('#siteFooter').classList.toggle('hidden', ['seller', 'admin'].includes(name));
++    $('#siteFooter').classList.toggle('hidden', isDashboard);
+     closeMobileMenu();
+     window.scrollTo({ top: 0, behavior: 'smooth' });
+     if (name === 'catalog') loadProducts();
+@@ -329,55 +332,122 @@
+ 
+   function openModal(title, body, wide = false) {
+     const root = $('#modalRoot');
+-    root.innerHTML = `<div class="modal-wrap"><section class="modal ${wide ? 'wide' : ''}" role="dialog" aria-modal="true" aria-labelledby="activeModalTitle" tabindex="-1"><header class="modal-head"><h2 id="activeModalTitle">${esc(title)}</h2><button class="close-btn" type="button" data-action="close-modal" aria-label="Fechar"><i class="bi bi-x-lg" aria-hidden="true"></i></button></header><div class="modal-body">${body}</div></section></div>`;
++    if (!root.querySelector('.modal')) {
++      state.modalReturnFocus = document.activeElement instanceof HTMLElement && document.activeElement !== document.body
++        ? document.activeElement
++        : null;
++    }
++    root.innerHTML = `<div class="modal-wrap"><section class="modal ${wide ? 'wide' : ''}" role="dialog" aria-modal="true" aria-labelledby="activeModalTitle" tabindex="-1"><header class="modal-head"><h2 id="activeModalTitle">${esc(title)}</h2><button class="modal-close" type="button" data-action="close-modal" aria-label="Fechar"><i class="bi bi-x-lg" aria-hidden="true"></i></button></header><div class="modal-body">${body}</div></section></div>`;
+     const wrap = $('.modal-wrap', root);
+     wrap.addEventListener('click', event => { if (event.target === wrap) closeModal(); });
+     const first = $('input:not([type="hidden"]), select, textarea, button, a[href]', wrap);
+     (first || $('.modal', wrap)).focus();
+   }
+ 
+-  function closeModal() {
++  function closeModal({ restoreFocus = true } = {}) {
++    const returnFocus = state.modalReturnFocus;
+     $('#modalRoot').replaceChildren();
+-  }
+-
+-  function openAuth(tab = 'login') {
+-    const body = `<div class="auth-tabs" role="tablist" aria-label="Acesso"><button class="auth-tab ${tab === 'login' ? 'active' : ''}" type="button" data-auth-tab="login" role="tab" aria-selected="${tab === 'login'}">Entrar</button><button class="auth-tab ${tab === 'register' ? 'active' : ''}" type="button" data-auth-tab="register" role="tab" aria-selected="${tab === 'register'}">Criar conta</button></div>
+-      <div id="authBody">${tab === 'login' ? loginFormHtml() : registerFormHtml()}</div>`;
+-    openModal('Conta BitLoja', body);
++    state.modalReturnFocus = null;
++    if (restoreFocus && returnFocus?.isConnected) returnFocus.focus();
++  }
++
++  function openAuth(tab = 'login', role = 'buyer') {
++    state.authRole = role === 'seller' ? 'seller' : 'buyer';
++    const body = `<div class="auth-layout">
++      <aside class="auth-visual" aria-label="Acesso à BitLoja">
++        <a class="auth-brand" href="/" data-action="auth-home" aria-label="BitLoja — início"><span class="brand-mark" aria-hidden="true"><i class="bi bi-box-seam"></i></span><span>BitLoja</span></a>
++        <div class="auth-visual-copy"><p class="auth-kicker">ACESSO AO MARKETPLACE</p><h2>Sua conta.<br>Seus pedidos.</h2><p>${tab === 'register' ? 'Compre, acompanhe suas entregas ou abra sua loja.' : 'Acompanhe pagamentos, mensagens e entregas.'}</p></div>
++        <img class="auth-art" src="/static/assets/bitcoin-bag.webp" alt="" aria-hidden="true">
++        <button class="auth-back" type="button" data-action="close-modal"><i class="bi bi-arrow-left" aria-hidden="true"></i> Voltar à loja</button>
++      </aside>
++      <div class="auth-content">
++        <div class="auth-tabs" role="tablist" aria-label="Acesso à conta">
++          <button id="authLoginTab" class="auth-tab ${tab === 'login' ? 'active' : ''}" type="button" data-auth-tab="login" role="tab" aria-controls="authBody" aria-selected="${tab === 'login'}" tabindex="${tab === 'login' ? '0' : '-1'}">Entrar</button>
++          <button id="authRegisterTab" class="auth-tab ${tab === 'register' ? 'active' : ''}" type="button" data-auth-tab="register" role="tab" aria-controls="authBody" aria-selected="${tab === 'register'}" tabindex="${tab === 'register' ? '0' : '-1'}">Criar conta</button>
++        </div>
++        <div id="authBody" class="auth-body" role="tabpanel" aria-labelledby="${tab === 'login' ? 'authLoginTab' : 'authRegisterTab'}">${tab === 'login' ? loginFormHtml() : registerFormHtml(state.authRole)}</div>
++      </div>
++    </div>`;
++    openModal('Conta BitLoja', body, true);
++    $('.modal-wrap', $('#modalRoot')).classList.add('auth-wrap');
++    $('.modal', $('#modalRoot')).classList.add('auth-modal');
++    $(tab === 'login' ? '#loginEmail' : '#registerName')?.focus();
+   }
+ 
+   function loginFormHtml() {
+-    return `<form id="loginForm"><div class="field"><label for="loginEmail">E-mail</label><input class="input" id="loginEmail" name="email" type="email" autocomplete="username" required></div><div class="field"><label for="loginPassword">Senha</label><input class="input" id="loginPassword" name="password" type="password" autocomplete="current-password" required></div><button class="btn btn-primary" type="submit">Entrar</button></form>`;
++    return `<div class="auth-form-heading"><p class="auth-form-kicker">BEM-VINDO DE VOLTA</p><h2>Entre na BitLoja</h2><p>Acesse seus pedidos e acompanhe cada etapa.</p></div><form class="auth-form" id="loginForm"><div class="field"><label for="loginEmail">E-mail</label><input class="input" id="loginEmail" name="email" type="email" inputmode="email" autocomplete="username" autocapitalize="none" spellcheck="false" required></div><div class="field"><label for="loginPassword">Senha</label><div class="auth-password-field"><input class="input" id="loginPassword" name="password" type="password" autocomplete="current-password" required><button class="auth-password-toggle" type="button" data-action="toggle-password" data-password-target="loginPassword" aria-controls="loginPassword" aria-pressed="false">Mostrar</button></div></div><p class="auth-feedback" id="authFeedback" role="status" aria-live="polite"></p><button class="button button-primary auth-submit" type="submit" data-idle-label="Entrar" data-pending-label="Entrando…">Entrar</button></form>`;
+   }
+ 
+   function registerFormHtml(role = 'buyer') {
+-    return `<form id="registerForm"><div class="field"><label for="registerName">Nome</label><input class="input" id="registerName" name="name" autocomplete="name" required></div><div class="field"><label for="registerEmail">E-mail</label><input class="input" id="registerEmail" name="email" type="email" autocomplete="email" required></div><div class="field"><label for="registerPassword">Senha</label><input class="input" id="registerPassword" name="password" type="password" autocomplete="new-password" minlength="8" required></div><div class="field"><label for="registerRole">Tipo de conta</label><select class="input" id="registerRole" name="role"><option value="buyer" ${role === 'buyer' ? 'selected' : ''}>Comprador</option><option value="seller" ${role === 'seller' ? 'selected' : ''}>Vendedor</option></select></div><button class="btn btn-primary" type="submit">Criar conta</button></form>`;
++    return `<div class="auth-form-heading"><p class="auth-form-kicker">NOVA CONTA</p><h2>Crie sua conta</h2><p>Escolha perfil comprador ou vendedor. Seu acesso segue o perfil cadastrado.</p></div><form class="auth-form" id="registerForm"><div class="field"><label for="registerName">Nome</label><input class="input" id="registerName" name="name" autocomplete="name" required></div><div class="field"><label for="registerEmail">E-mail</label><input class="input" id="registerEmail" name="email" type="email" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false" required></div><div class="field"><label for="registerPassword">Senha</label><div class="auth-password-field"><input class="input" id="registerPassword" name="password" type="password" autocomplete="new-password" minlength="8" required><button class="auth-password-toggle" type="button" data-action="toggle-password" data-password-target="registerPassword" aria-controls="registerPassword" aria-pressed="false">Mostrar</button></div><small class="auth-help">Use pelo menos 8 caracteres.</small></div><div class="field"><label for="registerRole">Tipo de conta</label><select class="input" id="registerRole" name="role"><option value="buyer" ${role === 'buyer' ? 'selected' : ''}>Comprador</option><option value="seller" ${role === 'seller' ? 'selected' : ''}>Vendedor</option></select></div><p class="auth-feedback" id="authFeedback" role="status" aria-live="polite"></p><button class="button button-primary auth-submit" type="submit" data-idle-label="Criar conta" data-pending-label="Criando…">Criar conta</button></form>`;
++  }
++
++  function setAuthFeedback(form, message = '', isError = false) {
++    const feedback = $('#authFeedback', form);
++    if (!feedback) return;
++    feedback.textContent = String(message || '');
++    feedback.classList.toggle('error', isError && Boolean(message));
++  }
++
++  function setAuthPending(form, pending) {
++    form.setAttribute('aria-busy', String(pending));
++    $$('input, select, button', form).forEach(control => { control.disabled = pending; });
++    $$('#modalRoot [data-auth-tab]').forEach(tab => { tab.disabled = pending; });
++    const submit = $('button[type="submit"]', form);
++    if (submit) submit.textContent = pending ? submit.dataset.pendingLabel : submit.dataset.idleLabel;
++  }
++
++  function focusViewDestination(view) {
++    const destination = $(`#${view}Content`) || $(`#${view}View`);
++    if (!destination) return;
++    destination.tabIndex = -1;
++    destination.focus();
+   }
+ 
+   async function doLogin(event) {
+     event.preventDefault();
+-    try {
+-      const data = await api('/api/login', { method: 'POST', body: JSON.stringify(Object.fromEntries(new FormData(event.currentTarget))) });
++    const form = event.currentTarget;
++    const payload = JSON.stringify(Object.fromEntries(new FormData(form)));
++    setAuthFeedback(form);
++    setAuthPending(form, true);
++    try {
++      const data = await api('/api/login', { method: 'POST', body: payload });
+       state.user = data.user || null;
+       state.csrf = data.csrf_token || state.csrf;
+-      closeModal();
++      closeModal({ restoreFocus: false });
+       renderSession();
+       toast(data.message || 'Sessão iniciada.');
+-      showView(state.user?.role === 'admin' ? 'admin' : state.user?.role === 'seller' ? 'seller' : 'account');
+-    } catch (error) { toast(error.message, 'error'); }
++      const nextView = state.user?.role === 'admin' ? 'admin' : state.user?.role === 'seller' ? 'seller' : 'account';
++      showView(nextView);
++      focusViewDestination(nextView);
++    } catch (error) {
++      setAuthFeedback(form, error.message, true);
++    } finally {
++      if (form.isConnected) setAuthPending(form, false);
++    }
+   }
+ 
+   async function doRegister(event) {
+     event.preventDefault();
+-    try {
+-      const data = await api('/api/register', { method: 'POST', body: JSON.stringify(Object.fromEntries(new FormData(event.currentTarget))) });
++    const form = event.currentTarget;
++    const payload = JSON.stringify(Object.fromEntries(new FormData(form)));
++    setAuthFeedback(form);
++    setAuthPending(form, true);
++    try {
++      const data = await api('/api/register', { method: 'POST', body: payload });
+       state.user = data.user || null;
+       state.csrf = data.csrf_token || state.csrf;
+-      closeModal();
++      closeModal({ restoreFocus: false });
+       renderSession();
+       toast(data.message || 'Conta criada.');
+-      showView(state.user?.role === 'seller' ? 'seller' : 'account');
+-    } catch (error) { toast(error.message, 'error'); }
++      const nextView = state.user?.role === 'seller' ? 'seller' : 'account';
++      showView(nextView);
++      focusViewDestination(nextView);
++    } catch (error) {
++      setAuthFeedback(form, error.message, true);
++    } finally {
++      if (form.isConnected) setAuthPending(form, false);
++    }
+   }
+ 
+   async function logout() {
+@@ -387,9 +457,10 @@
+       state.cartCount = 0;
+       state.unreadCount = 0;
+       state.csrf = data.csrf_token || state.csrf;
+-      closeModal();
++      closeModal({ restoreFocus: false });
+       renderSession();
+       showView('home');
++      focusViewDestination('home');
+       toast(data.message || 'Sessão encerrada.');
+     } catch (error) { toast(error.message, 'error'); }
+   }
+@@ -408,9 +479,7 @@
+ 
+   function sellAction() {
+     if (!state.user) {
+-      openAuth('register');
+-      const select = $('#registerRole');
+-      if (select) select.value = 'seller';
++      openAuth('register', 'seller');
+       return;
+     }
+     if (state.user.role === 'seller') { showView('seller'); return; }
+@@ -489,9 +558,15 @@
+       return;
+     }
+     const grouped = groupCartItems(items);
++    const cartImageFallbacks = {
++      1: productPhotos.headset, 2: productPhotos.keyboard, 3: productPhotos.ssd,
++      4: productPhotos.watch, 5: productPhotos.backpack, 6: productPhotos.lamp,
++      7: productPhotos.bottle, 8: productPhotos.organizer
++    };
+     lines.innerHTML = Array.from(grouped.entries()).map(([storeName, group]) => `<section class="cart-store-group"><header class="cart-store-heading"><i class="bi bi-shop" aria-hidden="true"></i><h2>${esc(storeName)}</h2><span>${group.length} ${group.length === 1 ? 'item' : 'itens'}</span></header>${group.map(item => {
+-      const fallback = productImage(item);
+-      return `<article class="cart-item"><img class="cart-thumb" src="${esc(fallback)}" data-fallback="${esc(fallback)}" alt="${esc(item.name)}" loading="lazy"><div class="cart-item-info"><strong>${esc(item.name)}</strong><small>${esc(item.store_name || '')}</small><span>₿ ${esc(item.price_btc || item.unit_price_btc || '')} cada</span></div><div class="qty-control"><button type="button" data-action="cart-qty" data-id="${idOf(item.id)}" data-delta="-1" aria-label="Diminuir quantidade de ${esc(item.name)}">−</button><label class="sr-only" for="cartQty${idOf(item.id)}">Quantidade de ${esc(item.name)}</label><input id="cartQty${idOf(item.id)}" type="number" min="0" max="${Math.max(0, num(item.stock))}" value="${idOf(item.quantity)}" data-cart-qty="${idOf(item.id)}"><button type="button" data-action="cart-qty" data-id="${idOf(item.id)}" data-delta="1" aria-label="Aumentar quantidade de ${esc(item.name)}">+</button></div><strong class="cart-item-price">₿ ${esc(item.line_total_btc)}</strong><button class="remove-item" type="button" data-action="cart-remove" data-id="${idOf(item.id)}" aria-label="Remover ${esc(item.name)}"><i class="bi bi-trash3" aria-hidden="true"></i></button></article>`;
++      const localFallback = cartImageFallbacks[idOf(item.id)] || productPhotos.organizer;
++      const image = String(item.image_url || '').trim() ? productImage(item) : localFallback;
++      return `<article class="cart-item"><img class="cart-thumb" src="${esc(image)}" data-fallback="${esc(localFallback)}" alt="${esc(item.name)}" loading="lazy"><div class="cart-item-info"><strong>${esc(item.name)}</strong><span>₿ ${esc(item.price_btc || item.unit_price_btc || '')} cada</span></div><div class="cart-line-total"><small>Total do item</small><strong class="cart-item-price">₿ ${esc(item.line_total_btc)}</strong></div><div class="qty-control"><button type="button" data-action="cart-qty" data-id="${idOf(item.id)}" data-delta="-1" aria-label="Diminuir quantidade de ${esc(item.name)}">−</button><label class="sr-only" for="cartQty${idOf(item.id)}">Quantidade de ${esc(item.name)}</label><input id="cartQty${idOf(item.id)}" type="number" min="0" max="${Math.max(0, num(item.stock))}" value="${idOf(item.quantity)}" data-cart-qty="${idOf(item.id)}"><button type="button" data-action="cart-qty" data-id="${idOf(item.id)}" data-delta="1" aria-label="Aumentar quantidade de ${esc(item.name)}">+</button></div><button class="remove-item" type="button" data-action="cart-remove" data-id="${idOf(item.id)}" aria-label="Remover ${esc(item.name)}"><i class="bi bi-trash3" aria-hidden="true"></i></button></article>`;
+     }).join('')}</section>`).join('');
+     summary.innerHTML = `<div class="cart-summary-inner"><p class="summary-label">Resumo do carrinho</p><div class="summary-row"><span>Itens</span><strong>${state.cartCount}</strong></div><div class="summary-total"><span>Total</span><strong>₿ ${esc(data.total_btc)}</strong></div><p>O checkout cria um pedido separado para cada loja.</p><button class="btn btn-primary" type="button" data-action="checkout"><i class="bi bi-lock" aria-hidden="true"></i> Continuar para checkout</button><small>Preço e estoque são confirmados pelo servidor ao finalizar.</small></div>`;
+   }
+@@ -606,6 +681,8 @@
+     try {
+       const data = await api(`/api/orders/${orderId}/tracking`, { method: 'POST', body: JSON.stringify(Object.fromEntries(new FormData(form))) });
+       toast(data.message || 'Rastreio atualizado.');
++      const refreshView = { seller: loadSeller, admin: loadAdmin, account: loadAccount }[state.activeView];
++      if (refreshView) await refreshView();
+       await openOrder(orderId);
+     } catch (error) { toast(error.message, 'error'); }
+   }
+@@ -647,26 +724,70 @@
+     } catch (error) { root.innerHTML = `<div class="notice notice-danger">${esc(error.message)}</div>`; }
+   }
+ 
+-  function sellerBanner(store, title, subtitle, art = 'seller-parcel.webp') {
+-    return `<header class="dash-hero"><div><p class="eyebrow"><span class="eyebrow-rule" aria-hidden="true"></span> Painel do vendedor</p><h1>${esc(title)}</h1><p>${esc(subtitle)}</p></div><img class="dash-hero-art" src="/static/assets/${art}" alt="" aria-hidden="true"></header>`;
++  function metricText(value) {
++    return value === null || value === undefined || value === '' ? '—' : String(value);
++  }
++
++  function dashMetric(label, value, bitcoin = false) {
++    const text = value === null || value === undefined || value === '' ? '—' : `${bitcoin ? '₿ ' : ''}${esc(value)}`;
++    return `<article class="dash-hero-metric"><small>${esc(label)}</small><strong>${text}</strong></article>`;
++  }
++
++  function sellerBanner(store, tab, metrics, products) {
++    const sectionName = { overview: 'Visão geral', products: 'Produtos', orders: 'Pedidos', store: 'Minha loja' }[tab] || 'Painel';
++    const tabKey = ['overview', 'products', 'orders', 'store'].includes(tab) ? tab : 'overview';
++    const metricStrip = store ? `<div class="dash-hero-metrics">${dashMetric('Score da loja', store.score)}${dashMetric('Produtos ativos', metrics.products ?? products.length)}${dashMetric('Vendas (BTC)', metrics.sales_btc, true)}${dashMetric('A receber (BTC)', metrics.pending_btc, true)}</div>` : '<div class="dash-hero-metrics dash-hero-empty">Cadastre os dados da loja para começar a acompanhar pedidos e estoque.</div>';
++    const subline = store ? 'Pedidos, produtos e repasses em um só lugar.' : 'Cadastre sua loja para publicar produtos.';
++    const heading = tabKey === 'overview' ? 'SUA LOJA. <span>SUAS REGRAS.</span>' : `<span>${esc(sectionName)}</span>`;
++    const titleLabel = tabKey === 'overview' ? 'SUA LOJA. / SUAS REGRAS.' : sectionName;
++    return `<header class="dash-hero seller-dash-hero seller-tab-${tabKey}"><div class="dash-hero-copy"><p class="eyebrow"><span class="eyebrow-rule" aria-hidden="true"></span> Painel do vendedor · ${esc(sectionName)}</p><h1 tabindex="-1" data-dashboard-title aria-label="${esc(titleLabel)}">${heading}</h1><p>${subline}</p></div><img class="dash-hero-art" src="/static/assets/seller-parcel.webp" alt="" aria-hidden="true"><img class="dash-hero-product dash-hero-keyboard" src="/static/assets/products/keyboard.webp" alt="" aria-hidden="true"><img class="dash-hero-product dash-hero-watch" src="/static/assets/products/watch.webp" alt="" aria-hidden="true">${metricStrip}</header>`;
++  }
++
++  function sellerStockPanel(products) {
++    const stockItems = products.filter(product => product.active !== false).slice().sort((first, second) => num(first.stock) - num(second.stock)).slice(0, 4);
++    const fallbackImages = { 1: productPhotos.headset, 2: productPhotos.keyboard, 3: productPhotos.ssd, 4: productPhotos.watch, 5: productPhotos.backpack, 6: productPhotos.lamp, 7: productPhotos.bottle, 8: productPhotos.organizer };
++    const rows = stockItems.length ? stockItems.map(product => {
++      const source = String(product.image_url || '').trim() ? productImage(product) : fallbackImages[idOf(product.id)];
++      const thumb = source ? `<img src="${esc(source)}" alt="" loading="lazy">` : '<i class="bi bi-box-seam" aria-hidden="true"></i>';
++      return `<button class="stock-row" type="button" data-action="edit-product" data-id="${idOf(product.id)}"><span class="stock-thumb ${source ? '' : 'stock-thumb-empty'}">${thumb}</span><span class="stock-copy"><strong>${esc(product.name)}</strong><small>${esc(product.category || 'Produto')}</small></span><span class="stock-quantity"><strong>${idOf(product.stock)}</strong><small>un.</small></span></button>`;
++    }).join('') : '<div class="empty">Nenhum produto ativo no estoque.</div>';
++    return `<section class="panel stock-panel"><div class="section-heading"><div><p class="eyebrow">INVENTÁRIO</p><h2>Menor estoque</h2></div><button class="btn btn-secondary btn-sm" type="button" data-seller-tab="products">Ver produtos</button></div><div class="stock-list">${rows}</div></section>`;
++  }
++
++  function sellerDisputesPanel(disputes) {
++    const open = disputes.filter(dispute => dispute.status !== 'resolved');
++    return `<section class="panel"><div class="section-heading"><div><p class="eyebrow">ATENDIMENTO</p><h2>Disputas em aberto</h2></div><button class="btn btn-secondary btn-sm" type="button" data-seller-tab="orders">Ver pedidos</button></div>${open.length ? disputesTable(open.slice(0, 3), false) : '<div class="empty">Nenhuma disputa em aberto.</div>'}</section>`;
++  }
++
++  function sellerActionCards() {
++    return `<div class="dashboard-action-cards" aria-label="Atalhos da loja"><button class="dashboard-action-card" type="button" data-seller-tab="products"><i class="bi bi-plus-square" aria-hidden="true"></i><span><strong>Adicionar produto</strong><small>Cadastro e estoque</small></span><i class="bi bi-arrow-up-right" aria-hidden="true"></i></button><button class="dashboard-action-card" type="button" data-seller-tab="orders"><i class="bi bi-receipt" aria-hidden="true"></i><span><strong>Acompanhar pedidos</strong><small>Pagamento e entrega</small></span><i class="bi bi-arrow-up-right" aria-hidden="true"></i></button><button class="dashboard-action-card" type="button" data-seller-tab="store"><i class="bi bi-shop" aria-hidden="true"></i><span><strong>Editar minha loja</strong><small>Dados e repasse</small></span><i class="bi bi-arrow-up-right" aria-hidden="true"></i></button></div>`;
+   }
+ 
+   function renderSeller() {
+     const data = state.seller || {};
+     const store = data.store || null;
+     const metrics = data.metrics || {};
+-    $$('.dashboard-nav-link[data-seller-tab]').forEach(button => button.classList.toggle('active', button.dataset.sellerTab === state.sellerTab));
+-    const banner = sellerBanner(store, state.sellerTab === 'overview' ? (store?.name || 'Sua loja') : ({ products: 'Produtos', orders: 'Pedidos', store: 'Configurações da loja' }[state.sellerTab] || 'Painel'), store ? 'Pedidos, produtos e repasses em um só lugar.' : 'Cadastre sua loja para publicar produtos.');
+-    const metricCards = store ? `<div class="metrics"><article class="metric-card"><small>Score operacional</small><strong>${esc(store.score)}</strong><span>${esc(store.tier || '—')}</span></article><article class="metric-card"><small>Produtos</small><strong>${esc(metrics.products ?? (data.products || []).length)}</strong></article><article class="metric-card"><small>Vendas</small><strong>₿ ${esc(metrics.sales_btc || '0.00000000')}</strong></article><article class="metric-card"><small>A receber</small><strong>₿ ${esc(metrics.pending_btc || '0.00000000')}</strong></article></div>` : '<div class="empty">Crie sua loja para começar.</div>';
++    const products = data.products || [];
++    const orders = data.orders || [];
++    const disputes = data.disputes || [];
++    $$('.dashboard-nav-link[data-seller-tab]').forEach(button => {
++      const active = button.dataset.sellerTab === state.sellerTab;
++      button.classList.toggle('active', active);
++      if (active) button.setAttribute('aria-current', 'page');
++      else button.removeAttribute('aria-current');
++    });
++    const banner = sellerBanner(store, state.sellerTab, metrics, products);
+     let content = '';
+     if (state.sellerTab === 'overview') {
+-      content = `${banner}${metricCards}${store ? `<div class="notice notice-info">Regra de repasse: <strong>${esc(store.payout_rule || '—')}</strong>. Disputas abertas bloqueiam o pedido.</div><div class="panel section"><div class="section-heading"><div><p class="eyebrow"><span class="eyebrow-rule" aria-hidden="true"></span> Atividade</p><h2>Pedidos recentes</h2></div><button class="btn btn-secondary btn-sm" type="button" data-seller-tab="orders">Ver todos</button></div>${orderTable((data.orders || []).slice(0, 5), true)}</div>` : `<div class="panel section"><h2>Cadastre sua loja</h2>${storeFormHtml(null)}</div>`}`;
++      content = store
++        ? `${banner}<div class="notice notice-info payout-note"><span>Regra de repasse</span><strong>${esc(metricText(store.payout_rule))}</strong></div><div class="seller-overview-grid"><div class="dashboard-panel-stack"><section class="panel"><div class="section-heading"><div><p class="eyebrow">ATIVIDADE</p><h2>Pedidos recentes</h2></div><button class="btn btn-secondary btn-sm" type="button" data-seller-tab="orders">Ver todos</button></div>${orderTable(orders.slice(0, 5), true)}</section>${sellerActionCards()}</div><div class="dashboard-panel-stack">${sellerStockPanel(products)}${sellerDisputesPanel(disputes)}</div></div>`
++        : `${banner}<section class="panel section"><div class="section-heading"><div><p class="eyebrow">PRIMEIRO PASSO</p><h2>Cadastre sua loja</h2></div></div><p>Informe nome, dados de contato e destino de repasse para começar.</p>${storeFormHtml(null)}</section>`;
+     } else if (state.sellerTab === 'products') {
+-      content = `${banner}<div class="grid-2 seller-forms"><section class="panel"><h2 id="productFormTitle">Novo produto</h2>${productFormHtml()}</section><section class="panel"><h2>Produtos cadastrados</h2>${sellerProductsTable(data.products || [])}</section></div>`;
++      content = `${banner}<div class="grid-2 seller-forms"><section class="panel"><h2 id="productFormTitle">Novo produto</h2>${productFormHtml()}</section><section class="panel"><h2>Produtos cadastrados</h2>${sellerProductsTable(products)}</section></div>`;
+     } else if (state.sellerTab === 'orders') {
+-      content = `${banner}<section class="panel section"><div class="section-heading"><div><p class="eyebrow"><span class="eyebrow-rule" aria-hidden="true"></span> Operação</p><h2>Pedidos da loja</h2></div></div>${orderTable(data.orders || [], true)}</section><section class="panel section"><h2>Disputas</h2>${disputesTable(data.disputes || [], false)}</section>`;
++      content = `${banner}<section class="panel section"><div class="section-heading"><div><p class="eyebrow">OPERAÇÃO</p><h2>Pedidos da loja</h2></div></div>${orderTable(orders, true)}</section><section class="panel section"><div class="section-heading"><div><p class="eyebrow">ATENDIMENTO</p><h2>Disputas</h2></div></div>${disputesTable(disputes, false)}</section>`;
+     } else {
+-      content = `${banner}<section class="panel section"><h2>${store ? 'Dados da loja' : 'Criar loja'}</h2>${storeFormHtml(store)}</section>`;
++      content = `${banner}<section class="panel section"><div class="section-heading"><div><p class="eyebrow">IDENTIDADE E REPASSE</p><h2>${store ? 'Dados da loja' : 'Criar loja'}</h2></div></div>${storeFormHtml(store)}</section>`;
+     }
+     $('#sellerContent').innerHTML = content;
+   }
+@@ -681,12 +802,12 @@
+ 
+   function sellerProductsTable(products) {
+     if (!products.length) return '<div class="empty">Nenhum produto cadastrado.</div>';
+-    return `<div class="table-wrap"><table><thead><tr><th>Produto</th><th>Preço</th><th>Estoque</th><th>Status</th><th>Ações</th></tr></thead><tbody>${products.map(product => `<tr><td><strong>${esc(product.name)}</strong><br><small>${esc(product.category)}</small></td><td>₿ ${esc(product.price_btc)}</td><td>${idOf(product.stock)}</td><td>${statusTag(product.active ? 'paid' : 'cancelled')}</td><td><div class="actions"><button class="btn btn-secondary btn-sm" type="button" data-action="edit-product" data-id="${idOf(product.id)}">Editar</button>${product.active ? `<button class="btn btn-danger btn-sm" type="button" data-action="disable-product" data-id="${idOf(product.id)}">Desativar</button>` : ''}</div></td></tr>`).join('')}</tbody></table></div>`;
++    return `<div class="table-wrap"><table><thead><tr><th>Produto</th><th>Preço</th><th>Estoque</th><th>Status</th><th>Ações</th></tr></thead><tbody>${products.map(product => `<tr><td><strong>${esc(product.name)}</strong><br><small>${esc(product.category)}</small></td><td>₿ ${esc(product.price_btc)}</td><td>${idOf(product.stock)}</td><td><span class="status ${product.active ? 'active' : 'cancelled'}">${product.active ? 'Ativo' : 'Desativado'}</span></td><td><div class="actions"><button class="btn btn-secondary btn-sm" type="button" data-action="edit-product" data-id="${idOf(product.id)}">Editar</button>${product.active ? `<button class="btn btn-danger btn-sm" type="button" data-action="disable-product" data-id="${idOf(product.id)}">Desativar</button>` : ''}</div></td></tr>`).join('')}</tbody></table></div>`;
+   }
+ 
+   function disputesTable(disputes, isAdmin = true) {
+     if (!disputes?.length) return '<div class="empty">Nenhuma disputa registrada.</div>';
+-    return `<div class="table-wrap"><table><thead><tr><th>Pedido</th><th>Motivo</th><th>Loja</th><th>Status</th><th>Ações</th></tr></thead><tbody>${disputes.map(dispute => `<tr><td>${esc(dispute.order_reference)}</td><td>${esc(dispute.reason)}<br><small>${esc(dispute.opened_by_name || '')}</small></td><td>${esc(dispute.store_name || 'Minha loja')}</td><td>${statusTag(dispute.status)}</td><td><div class="actions"><button class="btn btn-secondary btn-sm" type="button" data-action="open-dispute-thread" data-id="${idOf(dispute.id)}">Conversa</button>${isAdmin && dispute.status !== 'resolved' ? `<button class="btn btn-primary btn-sm" type="button" data-action="resolve-dispute" data-id="${idOf(dispute.id)}">Resolver</button>` : ''}</div></td></tr>`).join('')}</tbody></table></div>`;
++    return `<div class="table-wrap"><table><thead><tr><th>Pedido</th><th>Motivo</th><th>Loja</th><th>Status</th><th>Ações</th></tr></thead><tbody>${disputes.map(dispute => `<tr><td>${esc(dispute.order_reference)}</td><td>${esc(dispute.reason)}<br><small>${esc(dispute.opened_by_name || '')}</small></td><td>${esc(dispute.store_name || (isAdmin ? '—' : 'Esta loja'))}</td><td>${statusTag(dispute.status)}</td><td><div class="actions"><button class="btn btn-secondary btn-sm" type="button" data-action="open-dispute-thread" data-id="${idOf(dispute.id)}">Conversa</button>${isAdmin && dispute.status !== 'resolved' ? `<button class="btn btn-primary btn-sm" type="button" data-action="resolve-dispute" data-id="${idOf(dispute.id)}">Resolver</button>` : ''}</div></td></tr>`).join('')}</tbody></table></div>`;
+   }
+ 
+   async function saveStore(event) {
+@@ -751,27 +872,43 @@
+     } catch (error) { $('#adminContent').innerHTML = `<div class="notice notice-danger">${esc(error.message)}</div>`; }
+   }
+ 
++  function adminOverview(data, openDisputes) {
++    const orders = data.orders || [];
++    const batches = data.batches || [];
++    const actionCards = `<div class="dashboard-action-cards" aria-label="Atalhos administrativos"><button class="dashboard-action-card" type="button" data-admin-tab="settlements"><i class="bi bi-arrow-left-right" aria-hidden="true"></i><span><strong>Liquidações</strong><small>Revisar lotes e saldos</small></span><i class="bi bi-arrow-up-right" aria-hidden="true"></i></button><button class="dashboard-action-card" type="button" data-admin-tab="treasury"><i class="bi bi-safe2" aria-hidden="true"></i><span><strong>Tesouraria</strong><small>Destinos e reservas</small></span><i class="bi bi-arrow-up-right" aria-hidden="true"></i></button><button class="dashboard-action-card" type="button" data-admin-tab="disputes"><i class="bi bi-shield-exclamation" aria-hidden="true"></i><span><strong>Disputas</strong><small>Conversa e decisão</small></span><i class="bi bi-arrow-up-right" aria-hidden="true"></i></button><button class="dashboard-action-card" type="button" data-admin-tab="users"><i class="bi bi-people" aria-hidden="true"></i><span><strong>Usuários e lojas</strong><small>Contas e operação</small></span><i class="bi bi-arrow-up-right" aria-hidden="true"></i></button></div>`;
++    return `<div class="admin-overview-grid"><div class="dashboard-panel-stack"><section class="panel"><div class="section-heading"><div><p class="eyebrow">ATIVIDADE</p><h2>Pedidos recentes</h2></div>${config.btcMode === 'rpc' ? '<button class="btn btn-secondary btn-sm" type="button" data-action="sync-all">Sincronizar pagamentos</button>' : ''}</div>${adminOrdersTable(orders.slice(0, 5))}</section>${actionCards}</div><div class="dashboard-panel-stack"><section class="panel"><div class="section-heading"><div><p class="eyebrow">MEDIAÇÃO</p><h2>Disputas em aberto</h2></div><button class="btn btn-secondary btn-sm" type="button" data-admin-tab="disputes">Ver todas</button></div>${openDisputes.length ? disputesTable(openDisputes.slice(0, 4), true) : '<div class="empty">Nenhuma disputa em aberto.</div>'}</section><section class="panel"><div class="section-heading"><div><p class="eyebrow">LIQUIDAÇÕES</p><h2>Lotes recentes</h2></div><button class="btn btn-secondary btn-sm" type="button" data-admin-tab="settlements">Ver lotes</button></div>${batchesTable(batches.slice(0, 3))}</section></div></div>`;
++  }
++
+   function renderAdmin() {
+     const data = state.admin || {};
+     const metrics = data.metrics || {};
+     const wallet = data.wallet || {};
+-    $$('.dashboard-nav-link[data-admin-tab]').forEach(button => button.classList.toggle('active', button.dataset.adminTab === state.adminTab));
++    const orders = data.orders || [];
++    const disputes = data.disputes || [];
++    const openDisputes = disputes.filter(dispute => dispute.status !== 'resolved');
++    $$('.dashboard-nav-link[data-admin-tab]').forEach(button => {
++      const active = button.dataset.adminTab === state.adminTab;
++      button.classList.toggle('active', active);
++      if (active) button.setAttribute('aria-current', 'page');
++      else button.removeAttribute('aria-current');
++    });
+     const labels = { overview: 'Visão geral', settlements: 'Liquidações', treasury: 'Tesouraria', disputes: 'Disputas', users: 'Usuários e lojas', audit: 'Auditoria' };
+-    const title = labels[state.adminTab] || 'Administração';
+-    const banner = `<header class="dash-hero admin-dash-hero"><div><p class="eyebrow"><span class="eyebrow-rule" aria-hidden="true"></span> BitLoja · Administração</p><h1>${esc(title)}</h1><p>Dados operacionais carregados do servidor e da rede configurada.</p></div><img class="dash-hero-art" src="/static/assets/bitcoin-crystal.webp" alt="" aria-hidden="true"></header>`;
+-    const status = `${esc(wallet.mode || '—')} · ${esc(wallet.network || config.btcNetwork)} · ${esc(statusLabels[wallet.status] || wallet.status || '—')}`;
+-    const metricsHtml = `<div class="metrics"><article class="metric-card"><small>Recebido</small><strong>₿ ${esc(metrics.paid_btc || '0.00000000')}</strong></article><article class="metric-card"><small>Pedidos</small><strong>${esc(metrics.orders ?? (data.orders || []).length)}</strong></article><article class="metric-card"><small>Disputas abertas</small><strong>${esc(metrics.disputes ?? (data.disputes || []).length)}</strong></article><article class="metric-card"><small>UTXOs</small><strong>${esc(wallet.utxos ?? 0)}</strong></article></div>`;
+-    const actualContent = adminTabContent(data);
+-    $('#adminContent').innerHTML = `${banner}<div class="notice ${wallet.status === 'offline' ? 'notice-danger' : 'notice-info'}"><strong>Carteira:</strong> ${status}${wallet.error ? ` · ${esc(wallet.error)}` : ''}</div>${metricsHtml}<div id="adminTabContent">${actualContent}</div>`;
+-  }
+-
+-  function adminTabContent(data) {
++    const walletStatus = `${metricText(wallet.mode)} · ${metricText(wallet.network || config.btcNetwork)} · ${metricText(statusLabels[wallet.status] || wallet.status)}`;
++    const metricStrip = `<div class="dash-hero-metrics">${dashMetric('Recebido (BTC)', metrics.paid_btc, true)}${dashMetric('Pedidos', metrics.orders ?? orders.length)}${dashMetric('Disputas em aberto', metrics.disputes ?? openDisputes.length)}${dashMetric('UTXOs', wallet.utxos)}</div>`;
++    const tabKey = labels[state.adminTab] ? state.adminTab : 'overview';
++    const heading = tabKey === 'overview' ? 'CENTRO <span>DE CONTROLE</span>' : `<span>${esc(labels[tabKey])}</span>`;
++    const titleLabel = tabKey === 'overview' ? 'CENTRO / DE CONTROLE' : labels[tabKey];
++    const banner = `<header class="dash-hero admin-dash-hero admin-tab-${tabKey}"><div class="dash-hero-copy"><p class="eyebrow"><span class="eyebrow-rule" aria-hidden="true"></span> BitLoja · Administração · ${esc(labels[tabKey] || 'Painel')}</p><h1 tabindex="-1" data-dashboard-title aria-label="${esc(titleLabel)}">${heading}</h1><p>Carteira ${esc(walletStatus)}${wallet.error ? ` · ${esc(wallet.error)}` : ''}</p></div><img class="dash-hero-art" src="/static/assets/bitcoin-crystal.webp" alt="" aria-hidden="true">${metricStrip}</header>`;
++    $('#adminContent').innerHTML = `${banner}<div id="adminTabContent">${adminTabContent(data, openDisputes)}</div>`;
++  }
++
++  function adminTabContent(data, openDisputes = []) {
+     if (state.adminTab === 'settlements') return settlementsSection(data);
+     if (state.adminTab === 'treasury') return treasurySection(data);
+-    if (state.adminTab === 'disputes') return `<section class="panel section"><h2>Central de disputas</h2>${disputesTable(data.disputes || [], true)}</section>`;
++    if (state.adminTab === 'disputes') return `<section class="panel section"><div class="section-heading"><div><p class="eyebrow">MEDIAÇÃO</p><h2>Central de disputas</h2></div></div>${disputesTable(data.disputes || [], true)}</section>`;
+     if (state.adminTab === 'users') return usersSection(data);
+     if (state.adminTab === 'audit') return auditSection(data);
+-    return `<section class="panel section"><div class="section-heading"><div><p class="eyebrow"><span class="eyebrow-rule" aria-hidden="true"></span> Atividade</p><h2>Pedidos recentes</h2></div>${config.btcMode === 'rpc' ? '<button class="btn btn-secondary btn-sm" type="button" data-action="sync-all">Sincronizar pagamentos</button>' : ''}</div>${adminOrdersTable(data.orders || [])}</section><section class="panel section"><h2>Liquidações recentes</h2>${batchesTable(data.batches || [])}</section>`;
++    return adminOverview(data, openDisputes);
+   }
+ 
+   function adminOrdersTable(orders) {
+@@ -1034,6 +1171,7 @@
+       const data = await api('/api/wallet');
+       state.wallet = data;
+       renderWallet(data);
++      applyWalletModeGate(data.wallet || {});
+     } catch (error) { root.innerHTML = `<div class="notice notice-danger">${esc(error.message)}</div>`; }
+   }
+ 
+@@ -1045,7 +1183,23 @@
+     const addressPanel = `<section class="panel"><div class="section-heading"><div><h2>Recebimento</h2><p>Endereços retornados pela carteira.</p></div>${wallet.configured ? '<button class="btn btn-secondary btn-sm" type="button" data-action="wallet-new-address">Gerar endereço</button>' : ''}</div>${wallet.address ? `<code class="address">${esc(wallet.address)}</code>` : '<div class="empty">Endereço não disponível.</div>'}${addresses.length ? `<div class="address-list">${addresses.map(address => `<div><code>${esc(address.address)}</code><small>${esc(address.purpose)} · ${esc(dateText(address.created_at))}</small><button class="btn btn-secondary btn-sm" type="button" data-action="copy" data-value="${esc(address.address)}">Copiar</button></div>`).join('')}</div>` : ''}</section>`;
+     const transfersPanel = `<section class="panel"><h2>Transferências</h2>${transfers.length ? transfers.map(transfer => `<article class="psbt-row"><div class="checkout-order-head"><strong>${esc(transfer.reference)}</strong>${statusTag(transfer.status)}</div><p>₿ ${esc(transfer.amount_btc)} · taxa ₿ ${esc(transfer.fee_btc)}</p><code>${esc(transfer.destination)}</code><small>${esc(dateText(transfer.created_at))}${transfer.txid ? ` · TXID ${esc(short(transfer.txid))}` : ''}</small><div class="actions"><button class="btn btn-secondary btn-sm" type="button" data-action="wallet-download" data-id="${idOf(transfer.id)}">Baixar PSBT</button>${['draft', 'signed', 'ready_to_broadcast'].includes(transfer.status) ? `<button class="btn btn-secondary btn-sm" type="button" data-action="wallet-signed" data-id="${idOf(transfer.id)}">Enviar assinatura</button>` : ''}${transfer.status === 'ready_to_broadcast' ? `<button class="btn btn-primary btn-sm" type="button" data-action="wallet-broadcast" data-id="${idOf(transfer.id)}">Transmitir</button>` : ''}${transfer.status === 'draft' ? `<button class="btn btn-danger btn-sm" type="button" data-action="wallet-cancel" data-id="${idOf(transfer.id)}">Cancelar</button>` : ''}</div></article>`).join('') : '<div class="empty">Nenhuma transferência preparada.</div>'}</section>`;
+     const transferForm = state.user?.role === 'seller' && wallet.configured ? `<section class="panel"><h2>Preparar transferência</h2><p>Crie PSBT, assine em carteira externa, envie para validação e transmita após validação do servidor.</p><form id="walletTransferForm"><div class="field"><label for="transferDestination">Endereço de destino</label><input class="input" id="transferDestination" name="destination" required maxlength="120"></div><div class="field"><label for="transferAmount">Valor BTC</label><input class="input" id="transferAmount" name="amount_btc" type="number" min="0.00000001" step="0.00000001" required></div><div class="field"><label for="transferPassword">Senha da conta</label><input class="input" id="transferPassword" name="password" type="password" autocomplete="current-password" required></div><button class="btn btn-primary" type="submit">Criar PSBT</button></form></section>` : '';
+-    $('#walletContent').innerHTML = `<div class="notice ${wallet.status === 'offline' ? 'notice-danger' : 'notice-info'}"><strong>${esc(wallet.mode || '—')}</strong> · ${esc(wallet.network || config.btcNetwork)} · ${esc(statusLabels[wallet.status] || wallet.status || '—')}${wallet.requires_setup ? ' · Configure para habilitar recursos watch-only.' : ''}</div><div class="metrics"><article class="metric-card"><small>Confirmado</small><strong>₿ ${esc(wallet.confirmed_btc || '0.00000000')}</strong></article><article class="metric-card"><small>Pendente</small><strong>₿ ${esc(wallet.pending_btc || '0.00000000')}</strong></article><article class="metric-card"><small>Reservado</small><strong>₿ ${esc(wallet.reserved_btc || '0.00000000')}</strong></article><article class="metric-card"><small>Disponível</small><strong>₿ ${esc(wallet.available_btc || '0.00000000')}</strong></article></div>${setup}<div class="grid-2 section">${addressPanel}${transferForm}</div><div class="section">${transfersPanel}</div>`;
++    const walletNotice = String(wallet.mode || '').toLowerCase() === 'demo'
++      ? ' · Modo demonstração — operações de carteira desativadas.'
++      : wallet.requires_setup ? ' · Configure para habilitar recursos watch-only.' : '';
++    $('#walletContent').innerHTML = `<div class="notice ${wallet.status === 'offline' ? 'notice-danger' : 'notice-info'}"><strong>${esc(wallet.mode || '—')}</strong> · ${esc(wallet.network || config.btcNetwork)} · ${esc(statusLabels[wallet.status] || wallet.status || '—')}${walletNotice}</div><div class="metrics"><article class="metric-card"><small>Confirmado</small><strong>₿ ${esc(wallet.confirmed_btc || '0.00000000')}</strong></article><article class="metric-card"><small>Pendente</small><strong>₿ ${esc(wallet.pending_btc || '0.00000000')}</strong></article><article class="metric-card"><small>Reservado</small><strong>₿ ${esc(wallet.reserved_btc || '0.00000000')}</strong></article><article class="metric-card"><small>Disponível</small><strong>₿ ${esc(wallet.available_btc || '0.00000000')}</strong></article></div>${setup}<div class="grid-2 section">${addressPanel}${transferForm}</div><div class="section">${transfersPanel}</div>`;
++  }
++
++  function applyWalletModeGate(wallet) {
++    if (wallet.mode !== 'demo' && config.btcMode !== 'demo') return;
++    $('#walletSetupForm')?.closest('.panel')?.remove();
++    $('#walletTransferForm')?.closest('.panel')?.remove();
++    $('#walletContent [data-action="wallet-new-address"]')?.remove();
++    const notice = document.createElement('div');
++    notice.className = 'notice notice-info wallet-mode-note';
++    notice.textContent = 'Configuração e transferências disponíveis quando Bitcoin Core estiver habilitado.';
++    const metrics = $('#walletContent .metrics');
++    if (metrics) metrics.insertAdjacentElement('afterend', notice);
++    else $('#walletContent')?.prepend(notice);
+   }
+ 
+   function createIdempotencyKey() {
+@@ -1240,6 +1394,7 @@
+     const id = idOf(button.dataset.id);
+     switch (action) {
+       case 'home': showView('home'); break;
++      case 'auth-home': closeModal({ restoreFocus: false }); showView('home'); focusViewDestination('home'); break;
+       case 'catalog': showView('catalog'); break;
+       case 'sell': sellAction(); break;
+       case 'account-menu': accountMenu(); break;
+@@ -1248,15 +1403,31 @@
+       case 'search-toggle': toggleSearch(); break;
+       case 'menu': toggleMobileMenu(); break;
+       case 'close-modal': closeModal(); break;
+-      case 'go-view': closeModal(); showView(button.dataset.viewName); break;
++      case 'toggle-password': {
++        const input = $(`#${CSS.escape(button.dataset.passwordTarget || '')}`);
++        if (!input) break;
++        const visible = input.type === 'password';
++        input.type = visible ? 'text' : 'password';
++        button.textContent = visible ? 'Ocultar' : 'Mostrar';
++        button.setAttribute('aria-pressed', String(visible));
++        button.setAttribute('aria-label', `${visible ? 'Ocultar' : 'Mostrar'} senha`);
++        break;
++      }
++      case 'go-view': {
++        const view = button.dataset.viewName;
++        closeModal({ restoreFocus: false });
++        showView(view);
++        focusViewDestination(view);
++        break;
++      }
+       case 'logout': await logout(); break;
+-      case 'logout-then-seller': await logout(); openAuth('register'); if ($('#registerRole')) $('#registerRole').value = 'seller'; break;
++      case 'logout-then-seller': await logout(); openAuth('register', 'seller'); break;
+       case 'open-product': await openProduct(id); break;
+       case 'open-store': await openStore(id); break;
+       case 'add-cart': await addToCart(id); break;
+       case 'add-current-product': await addToCart(id, $('#productQty')?.value || 1); break;
+       case 'checkout': openCheckout(); break;
+-      case 'checkout-orders': closeModal(); showView('account'); break;
++      case 'checkout-orders': closeModal({ restoreFocus: false }); showView('account'); focusViewDestination('account'); break;
+       case 'cart-remove': await updateCart(id, 0); break;
+       case 'cart-qty': {
+         const input = $(`[data-cart-qty="${id}"]`);
+@@ -1347,8 +1518,15 @@
+     const authTab = event.target.closest('[data-auth-tab]');
+     if (authTab) {
+       const tab = authTab.dataset.authTab;
+-      $('#authBody').innerHTML = tab === 'login' ? loginFormHtml() : registerFormHtml();
+-      $$('.auth-tab').forEach(button => { button.classList.toggle('active', button.dataset.authTab === tab); button.setAttribute('aria-selected', String(button.dataset.authTab === tab)); });
++      if (tab === 'register') state.authRole = $('#registerRole')?.value || state.authRole;
++      $('#authBody').innerHTML = tab === 'login' ? loginFormHtml() : registerFormHtml(state.authRole);
++      $('#authBody').setAttribute('aria-labelledby', tab === 'login' ? 'authLoginTab' : 'authRegisterTab');
++      $$('.auth-tab').forEach(button => {
++        const active = button.dataset.authTab === tab;
++        button.classList.toggle('active', active);
++        button.setAttribute('aria-selected', String(active));
++        button.tabIndex = active ? 0 : -1;
++      });
+       $(tab === 'login' ? '#loginEmail' : '#registerName')?.focus();
+       return;
+     }
+@@ -1405,6 +1583,7 @@
+   document.addEventListener('change', event => {
+     if (event.target.matches('[data-cart-qty]')) updateCart(idOf(event.target.dataset.cartQty), idOf(event.target.value));
+     if (['categoryFilter', 'sortFilter'].includes(event.target.id)) loadProducts();
++    if (event.target.id === 'registerRole') state.authRole = event.target.value;
+     if (event.target.matches('input[name="payment_method"]')) $('#multisigCheckoutFields')?.classList.toggle('hidden', event.target.value === 'lightning' && event.target.checked);
+   });
+ 
+@@ -1425,6 +1604,21 @@
+       if ($('#modalRoot .modal')) { closeModal(); return; }
+       if (state.mobileMenuOpen) { closeMobileMenu(); return; }
+       if (state.searchOpen) { state.searchOpen = false; $('#searchForm').classList.remove('search-open'); $('#searchToggle').setAttribute('aria-expanded', 'false'); }
++    }
++    const authTab = event.target instanceof Element ? event.target.closest('[data-auth-tab]') : null;
++    if (authTab && ['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
++      const tabs = $$('[data-auth-tab]', $('#modalRoot')).filter(tab => !tab.disabled);
++      const currentIndex = tabs.indexOf(authTab);
++      if (currentIndex >= 0 && tabs.length) {
++        const nextIndex = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : (currentIndex + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
++        const nextTab = tabs[nextIndex];
++        event.preventDefault();
++        if (nextTab !== authTab) {
++          nextTab.click();
++          nextTab.focus();
++        }
++      }
++      return;
+     }
+     const dialog = $('#modalRoot .modal');
+     if (!dialog || event.key !== 'Tab') return;
+diff --git a/templates/index.html b/templates/index.html
+--- a/templates/index.html
++++ b/templates/index.html
+@@ -10,6 +10,9 @@
+   <link rel="preload" href="{{ url_for('static', filename='fonts/jetbrains-mono-variable-latin.woff2') }}" as="font" type="font/woff2" crossorigin>
+   <link rel="stylesheet" href="{{ url_for('static', filename='icons/bootstrap-icons.css') }}">
+   <link rel="stylesheet" href="{{ url_for('static', filename='css/bitloja.css') }}">
++  <link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}">
++  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
++  <link rel="stylesheet" href="{{ url_for('static', filename='css/cart.css') }}">
+   <script defer src="{{ url_for('static', filename='js/bitloja.js') }}"></script>
+ </head>
+ <body data-btc-network="{{ btc_network|e }}" data-btc-mode="{{ btc_mode|e }}">
+@@ -145,7 +148,8 @@
+     <section class="page cart-page hidden" id="cartView">
+       <div class="shell cart-shell">
+         <div class="cart-heading-row">
+-          <div><p class="eyebrow"><span class="eyebrow-rule" aria-hidden="true"></span> Revise antes de finalizar</p><h1>Seu <span class="title-ink">carrinho.</span></h1></div>
++          <div class="cart-heading-copy"><p class="eyebrow"><span class="eyebrow-rule" aria-hidden="true"></span> Revise antes de finalizar</p><h1>Seu <span class="title-ink">carrinho.</span></h1></div>
++          <img class="cart-hero-art" src="{{ url_for('static', filename='assets/bitcoin-cart.webp') }}" alt="" aria-hidden="true">
+           <button class="text-link" type="button" data-action="catalog"><i class="bi bi-arrow-left" aria-hidden="true"></i> Continuar comprando</button>
+         </div>
+         <ol class="checkout-steps" aria-label="Etapas da compra"><li class="current"><span>1</span>Carrinho</li><li><span>2</span>Checkout</li><li><span>3</span>Pagamento</li><li><span>4</span>Confirmação</li></ol>
+@@ -178,8 +182,8 @@
+           <p class="sidebar-runtime">REDE · {{ btc_network|e }} / {{ btc_mode|e }}</p>
+         </aside>
+         <div class="dashboard-main">
+-          <div class="dashboard-topbar"><span class="dashboard-search-label"><i class="bi bi-search" aria-hidden="true"></i> Loja, produtos e pedidos</span><div class="dashboard-actions"><button class="icon-button" type="button" data-action="notifications" aria-label="Notificações"><i class="bi bi-bell" aria-hidden="true"></i></button><button class="header-button" type="button" data-action="account-menu"><i class="bi bi-person-circle" aria-hidden="true"></i><span id="sellerTopLabel">Conta</span></button></div></div>
+-          <div class="dashboard-content" id="sellerContent" aria-live="polite"></div>
++          <div class="dashboard-topbar"><span class="dashboard-context">Operação da loja</span><div class="dashboard-actions"><button class="icon-button" type="button" data-action="notifications" aria-label="Notificações"><i class="bi bi-bell" aria-hidden="true"></i></button><button class="header-button" type="button" data-action="account-menu"><i class="bi bi-person-circle" aria-hidden="true"></i><span id="sellerTopLabel">Conta</span></button></div></div>
++          <div class="dashboard-content" id="sellerContent" tabindex="-1" aria-live="polite"></div>
+         </div>
+       </div>
+     </section>
+@@ -204,8 +208,8 @@
+           <p class="sidebar-runtime">REDE · {{ btc_network|e }} / {{ btc_mode|e }}</p>
+         </aside>
+         <div class="dashboard-main">
+-          <div class="dashboard-topbar"><span class="dashboard-search-label"><i class="bi bi-search" aria-hidden="true"></i> Pedidos, usuários e pagamentos</span><div class="dashboard-actions"><button class="icon-button" type="button" data-action="notifications" aria-label="Notificações"><i class="bi bi-bell" aria-hidden="true"></i></button><button class="header-button" type="button" data-action="account-menu"><i class="bi bi-person-circle" aria-hidden="true"></i><span id="adminTopLabel">Conta</span></button></div></div>
+-          <div class="dashboard-content" id="adminContent" aria-live="polite"></div>
++          <div class="dashboard-topbar"><span class="dashboard-context">Administração da plataforma</span><div class="dashboard-actions"><button class="icon-button" type="button" data-action="notifications" aria-label="Notificações"><i class="bi bi-bell" aria-hidden="true"></i></button><button class="header-button" type="button" data-action="account-menu"><i class="bi bi-person-circle" aria-hidden="true"></i><span id="adminTopLabel">Conta</span></button></div></div>
++          <div class="dashboard-content" id="adminContent" tabindex="-1" aria-live="polite"></div>
+         </div>
+       </div>
+     </section>
+diff --git a/static/css/auth.css b/static/css/auth.css
+new file mode 100644
+--- /dev/null
++++ b/static/css/auth.css
+@@ -0,0 +1,565 @@
++.auth-wrap {
++  padding: 24px;
++}
++
++.auth-modal {
++  position: relative;
++  width: min(960px, 100%);
++  max-height: min(90vh, 900px);
++  overflow: auto;
++  border: 1px solid rgba(255, 255, 255, .48);
++  border-radius: 20px;
++  background: #fff;
++  color: var(--navy);
++  scrollbar-width: thin;
++  scrollbar-color: #aab9cc transparent;
++}
++
++.auth-modal > .modal-head {
++  position: absolute;
++  z-index: 3;
++  top: 15px;
++  right: 15px;
++  display: grid;
++  width: 42px;
++  height: 42px;
++  min-height: 0;
++  padding: 0;
++  border: 0;
++  pointer-events: none;
++}
++
++.auth-modal > .modal-head h2 {
++  position: absolute;
++  width: 1px;
++  height: 1px;
++  padding: 0;
++  margin: -1px;
++  overflow: hidden;
++  clip: rect(0, 0, 0, 0);
++  white-space: nowrap;
++  border: 0;
++}
++
++.auth-modal .modal-close {
++  width: 42px;
++  height: 42px;
++  border-color: rgba(0, 17, 68, .12);
++  border-radius: 50%;
++  background: #fff;
++  color: var(--navy);
++  font-size: 15px;
++  pointer-events: auto;
++  transition: background .18s ease, border-color .18s ease, transform .18s ease;
++}
++
++.auth-modal .modal-close:hover {
++  transform: rotate(90deg);
++  border-color: rgba(0, 165, 244, .36);
++  background: #eff9ff;
++}
++
++.auth-modal > .modal-body {
++  padding: 0;
++}
++
++.auth-layout {
++  display: grid;
++  min-height: min(690px, 90vh);
++  grid-template-columns: minmax(290px, .84fr) minmax(0, 1.16fr);
++}
++
++.auth-visual {
++  position: relative;
++  display: flex;
++  min-width: 0;
++  flex-direction: column;
++  overflow: hidden;
++  padding: 30px 32px 26px;
++  background: linear-gradient(150deg, #006da8 0%, #00639d 52%, #00548f 100%);
++  color: #fff;
++  isolation: isolate;
++}
++
++.auth-visual::before {
++  position: absolute;
++  z-index: -1;
++  right: -142px;
++  bottom: 68px;
++  width: 370px;
++  height: 370px;
++  border: 1px solid rgba(255, 255, 255, .15);
++  border-radius: 50%;
++  box-shadow: 0 0 0 38px rgba(255, 255, 255, .035), 0 0 0 78px rgba(255, 255, 255, .025);
++  content: "";
++}
++
++.auth-brand {
++  position: relative;
++  z-index: 1;
++  display: inline-flex;
++  width: fit-content;
++  align-items: center;
++  gap: 10px;
++  color: #fff;
++  font-size: 21px;
++  font-weight: 900;
++  letter-spacing: -.045em;
++}
++
++.auth-brand .brand-mark {
++  width: 38px;
++  height: 38px;
++  border-radius: 11px;
++  background: #fff;
++  color: #008bd5;
++  box-shadow: 0 8px 18px rgba(0, 45, 94, .16);
++}
++
++.auth-visual-copy {
++  position: relative;
++  z-index: 1;
++  width: 100%;
++  margin-block: auto 0;
++  padding: 72px 0 224px;
++}
++
++.auth-kicker,
++.auth-form-kicker {
++  margin: 0;
++  font-size: 10px;
++  font-weight: 800;
++  letter-spacing: .13em;
++  line-height: 1.4;
++  text-transform: uppercase;
++}
++
++.auth-kicker {
++  color: #fff;
++}
++
++.auth-visual-copy h2 {
++  max-width: 340px;
++  margin: 12px 0 14px;
++  font-size: clamp(34px, 4vw, 44px);
++  font-weight: 850;
++  letter-spacing: -.075em;
++  line-height: .99;
++}
++
++.auth-visual-copy > p:last-child {
++  max-width: 290px;
++  margin: 0;
++  color: #fff;
++  font-size: 13px;
++  line-height: 1.55;
++}
++
++.auth-art {
++  position: absolute;
++  z-index: 0;
++  right: 17px;
++  bottom: 52px;
++  width: min(64%, 238px);
++  max-height: 245px;
++  object-fit: contain;
++  filter: drop-shadow(0 18px 28px rgba(0, 36, 80, .2));
++}
++
++.auth-back {
++  position: relative;
++  z-index: 1;
++  display: inline-flex;
++  width: fit-content;
++  min-height: 36px;
++  align-items: center;
++  gap: 9px;
++  padding: 0;
++  border: 0;
++  background: transparent;
++  color: #fff;
++  font-size: 12px;
++  font-weight: 700;
++  cursor: pointer;
++}
++
++.auth-back:hover {
++  color: #fff;
++}
++
++.auth-back .bi {
++  font-size: 14px;
++  transition: transform .18s ease;
++}
++
++.auth-back:hover .bi {
++  transform: translateX(-3px);
++}
++
++.auth-content {
++  display: flex;
++  min-width: 0;
++  flex-direction: column;
++  justify-content: center;
++  padding: 56px clamp(34px, 5vw, 68px);
++  background: #fff;
++}
++
++.auth-tabs {
++  display: grid;
++  grid-template-columns: 1fr 1fr;
++  gap: 4px;
++  margin: 0 0 26px;
++  padding: 4px;
++  border: 1px solid #e5ebf2;
++  border-radius: 12px;
++  background: #f1f5f9;
++}
++
++.auth-tab {
++  min-height: 43px;
++  border: 0;
++  border-radius: 9px;
++  background: transparent;
++  color: #53657e;
++  font-size: 12px;
++  font-weight: 800;
++  cursor: pointer;
++  transition: background .18s ease, color .18s ease, box-shadow .18s ease;
++}
++
++.auth-tab:hover:not(.active) {
++  color: var(--navy);
++  background: rgba(255, 255, 255, .68);
++}
++
++.auth-tab.active {
++  background: #fff;
++  color: var(--navy);
++  box-shadow: 0 2px 8px rgba(0, 24, 65, .09);
++}
++
++.auth-form-heading {
++  margin-bottom: 24px;
++}
++
++.auth-form-kicker {
++  color: #006da8;
++}
++
++.auth-form-heading h2 {
++  margin: 8px 0 6px;
++  color: var(--navy);
++  font-size: clamp(25px, 3vw, 31px);
++  font-weight: 850;
++  letter-spacing: -.065em;
++  line-height: 1.1;
++}
++
++.auth-form-heading > p:last-child {
++  max-width: 390px;
++  margin: 0;
++  color: #5f7088;
++  font-size: 13px;
++  line-height: 1.55;
++}
++
++.auth-form {
++  display: grid;
++  gap: 17px;
++  width: 100%;
++}
++
++.auth-form .field {
++  min-width: 0;
++  margin: 0;
++}
++
++.auth-form .field label {
++  margin-bottom: 7px;
++  color: #233a60;
++  font-size: 12px;
++  font-weight: 750;
++}
++
++.auth-form .input {
++  width: 100%;
++  min-height: 52px;
++  padding: 12px 14px;
++  border: 1px solid #d4deea;
++  border-radius: 10px;
++  background-color: #fff;
++  color: var(--navy);
++  font-size: 14px;
++  outline: 0;
++  transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
++}
++
++.auth-form .input::placeholder {
++  color: #66758c;
++}
++
++.auth-form .input:hover:not(:focus) {
++  border-color: #b8c7d9;
++}
++
++.auth-form .input:focus {
++  border-color: #00a5f4;
++  box-shadow: 0 0 0 3px rgba(0, 165, 244, .15);
++}
++
++.auth-password-field {
++  position: relative;
++}
++
++.auth-password-field .input {
++  padding-right: 82px;
++}
++
++.auth-password-toggle {
++  position: absolute;
++  top: 50%;
++  right: 12px;
++  min-height: 34px;
++  padding: 0 5px;
++  transform: translateY(-50%);
++  border: 0;
++  border-radius: 6px;
++  background: transparent;
++  color: #006da8;
++  font-size: 11px;
++  font-weight: 800;
++  cursor: pointer;
++}
++
++.auth-password-toggle:hover:not(:disabled) {
++  color: var(--navy);
++  background: #eff9ff;
++}
++
++.auth-help {
++  display: block;
++  margin-top: 7px;
++  color: #64748b;
++  font-size: 11px;
++  line-height: 1.4;
++}
++
++.auth-feedback {
++  margin: 0;
++  color: #60728d;
++  font-size: 12px;
++  line-height: 1.45;
++}
++
++.auth-feedback:empty {
++  display: none;
++}
++
++.auth-feedback.error {
++  padding: 10px 12px;
++  border: 1px solid #f2c4ca;
++  border-radius: 9px;
++  background: #fff4f5;
++  color: #a21f32;
++}
++
++.auth-modal .auth-submit {
++  width: 100%;
++  min-height: 52px;
++  margin-top: 2px;
++  padding-inline: 18px;
++  border: 1px solid var(--navy);
++  border-radius: 10px;
++  background: var(--navy);
++  color: #fff;
++  font-size: 12px;
++  font-weight: 850;
++  letter-spacing: .035em;
++  box-shadow: 0 9px 18px rgba(0, 11, 53, .15);
++  transition: background .18s ease, box-shadow .18s ease, transform .18s ease;
++}
++
++.auth-modal .auth-submit:hover:not(:disabled) {
++  transform: translateY(-1px);
++  background: #10204c;
++  box-shadow: 0 12px 22px rgba(0, 11, 53, .2);
++}
++
++.auth-modal .auth-submit:disabled {
++  opacity: .72;
++  cursor: progress;
++}
++
++.auth-modal :focus-visible {
++  outline: 3px solid #008bd5;
++  outline-offset: 2px;
++  box-shadow: 0 0 0 5px rgba(0, 165, 244, .15);
++}
++
++@media (max-width: 760px) {
++  .auth-wrap {
++    padding: 12px;
++  }
++
++  .auth-modal {
++    width: min(560px, 100%);
++    max-height: calc(100dvh - 24px);
++    border-radius: 17px;
++  }
++
++  .auth-modal > .modal-head {
++    top: 13px;
++    right: 13px;
++  }
++
++  .auth-layout {
++    min-height: 0;
++    grid-template-columns: minmax(0, 1fr);
++  }
++
++  .auth-visual {
++    min-height: 184px;
++    padding: 20px 23px 18px;
++  }
++
++  .auth-visual-copy {
++    width: min(68%, 260px);
++    margin: 12px 0 0;
++    padding: 0;
++  }
++
++  .auth-visual-copy h2 {
++    margin: 5px 0 0;
++    font-size: 25px;
++    line-height: 1.02;
++  }
++
++  .auth-visual-copy > p:last-child,
++  .auth-back {
++    display: none;
++  }
++
++  .auth-kicker {
++    font-size: 8px;
++  }
++
++  .auth-art {
++    right: 22px;
++    bottom: 11px;
++    width: 112px;
++    max-height: 142px;
++  }
++
++  .auth-content {
++    padding: 25px 25px 29px;
++  }
++
++  .auth-tabs {
++    margin-bottom: 22px;
++  }
++}
++
++@media (max-width: 430px) {
++  .auth-wrap {
++    padding: 9px;
++  }
++
++  .auth-modal {
++    max-height: calc(100dvh - 18px);
++    border-radius: 16px;
++  }
++
++  .auth-visual {
++    min-height: 170px;
++    padding: 18px 19px 16px;
++  }
++
++  .auth-brand {
++    gap: 8px;
++    font-size: 19px;
++  }
++
++  .auth-brand .brand-mark {
++    width: 34px;
++    height: 34px;
++    font-size: 17px;
++  }
++
++  .auth-visual-copy {
++    margin-top: 11px;
++  }
++
++  .auth-visual-copy h2 {
++    font-size: 23px;
++  }
++
++  .auth-art {
++    right: 14px;
++    bottom: 7px;
++    width: 103px;
++    max-height: 130px;
++  }
++
++  .auth-content {
++    padding: 22px 19px 24px;
++  }
++
++  .auth-tabs {
++    margin-bottom: 19px;
++  }
++
++  .auth-form-heading {
++    margin-bottom: 20px;
++  }
++
++  .auth-form {
++    gap: 14px;
++  }
++
++  .auth-form .input {
++    min-height: 50px;
++  }
++}
++
++@media (max-height: 720px) and (max-width: 760px) {
++  .auth-visual {
++    min-height: 148px;
++    padding-block: 15px 12px;
++  }
++
++  .auth-visual-copy {
++    margin-top: 7px;
++  }
++
++  .auth-kicker {
++    display: none;
++  }
++
++  .auth-art {
++    width: 88px;
++    max-height: 112px;
++  }
++
++  .auth-content {
++    padding-block: 18px 21px;
++  }
++
++  .auth-tabs {
++    margin-bottom: 16px;
++  }
++
++  .auth-form-heading {
++    margin-bottom: 15px;
++  }
++}
++
++@media (prefers-reduced-motion: reduce) {
++  .auth-modal *,
++  .auth-modal *::before,
++  .auth-modal *::after {
++    scroll-behavior: auto;
++    transition-duration: .01ms !important;
++    animation-duration: .01ms !important;
++  }
++}
+diff --git a/static/css/dashboard.css b/static/css/dashboard.css
+new file mode 100644
+--- /dev/null
++++ b/static/css/dashboard.css
+@@ -0,0 +1,1430 @@
++.dashboard-page {
++  --dashboard-blue: #0799ed;
++  --dashboard-blue-deep: #0578c3;
++  --dashboard-ink: #001e53;
++  --dashboard-panel: #071b44;
++  --dashboard-panel-raised: #0b2758;
++  --dashboard-line: rgba(194, 229, 255, .15);
++  min-height: 100vh;
++  color: #fff;
++  background: linear-gradient(135deg, #078bdd 0%, #00a5f4 56%, #078cde 100%);
++}
++
++.dashboard-page .dashboard-layout {
++  grid-template-columns: 257px minmax(0, 1fr);
++  min-height: 100vh;
++}
++
++.dashboard-page .dashboard-sidebar {
++  z-index: 4;
++  gap: 0;
++  padding: 24px 17px 18px;
++  border-right: 1px solid rgba(255, 255, 255, .2);
++  background: linear-gradient(180deg, #067ec8, #006db7);
++}
++
++.dashboard-page .dashboard-brand {
++  gap: 11px;
++  padding: 0 8px;
++  color: #fff;
++  font-size: 25px;
++  letter-spacing: -.055em;
++}
++
++.dashboard-page .dashboard-brand .brand-mark {
++  flex: 0 0 40px;
++  width: 40px;
++  height: 40px;
++  border-radius: 11px;
++  background: #fff;
++  color: var(--dashboard-blue-deep);
++}
++
++.dashboard-page .sidebar-kicker {
++  margin: 28px 10px 12px;
++  color: #fff;
++  font: 600 10px/1.5 'JetBrains Mono', monospace;
++  letter-spacing: .13em;
++  text-transform: uppercase;
++}
++
++.dashboard-page .dashboard-nav {
++  gap: 4px;
++}
++
++.dashboard-page .dashboard-nav-link {
++  min-height: 42px;
++  gap: 11px;
++  padding: 0 12px;
++  border-radius: 9px;
++  color: rgba(255, 255, 255, .92);
++  font-size: 12px;
++  font-weight: 550;
++}
++
++.dashboard-page .dashboard-nav-link .bi {
++  flex: 0 0 19px;
++  width: 19px;
++  font-size: 15px;
++}
++
++.dashboard-page .dashboard-nav-link:hover,
++.dashboard-page .dashboard-nav-link:focus-visible {
++  background: rgba(255, 255, 255, .14);
++  outline-color: #fff;
++}
++
++.dashboard-page .dashboard-nav-link.active {
++  background: #fff;
++  color: var(--dashboard-ink);
++  font-weight: 750;
++  box-shadow: 0 5px 16px rgba(0, 44, 108, .12);
++}
++
++.dashboard-page .sidebar-profile {
++  margin-top: auto;
++  padding: 12px;
++  border: 1px solid rgba(255, 255, 255, .3);
++  border-radius: 12px;
++  background: rgba(1, 53, 120, .22);
++}
++
++.dashboard-page .sidebar-profile strong,
++.dashboard-page .sidebar-profile small {
++  display: block;
++  overflow: hidden;
++  text-overflow: ellipsis;
++}
++
++.dashboard-page .sidebar-profile strong {
++  color: #fff;
++  font-size: 12px;
++}
++
++.dashboard-page .sidebar-profile small {
++  margin-top: 4px;
++  color: #e3f5ff;
++  font-size: 10px;
++}
++
++.dashboard-page .sidebar-runtime {
++  margin: 12px 4px 0;
++  color: #e8f6ff;
++  font: 500 10px/1.5 'JetBrains Mono', monospace;
++  letter-spacing: .06em;
++}
++
++.dashboard-page .dashboard-main {
++  min-width: 0;
++  background: linear-gradient(180deg, rgba(5, 134, 218, .22), rgba(1, 105, 190, .12));
++}
++
++.dashboard-page .dashboard-topbar {
++  position: relative;
++  z-index: 3;
++  height: 74px;
++  padding: 0 clamp(20px, 2.2vw, 34px);
++  border-bottom: 1px solid rgba(255, 255, 255, .18);
++  background: rgba(0, 81, 154, .36);
++}
++
++.dashboard-context {
++  min-width: 0;
++  color: #fff;
++  font-size: 12px;
++  font-weight: 600;
++  letter-spacing: .01em;
++}
++
++.dashboard-page .dashboard-actions {
++  display: flex;
++  align-items: center;
++  gap: 9px;
++}
++
++.dashboard-page .dashboard-topbar .icon-button,
++.dashboard-page .dashboard-topbar .header-button {
++  min-height: 38px;
++  border-color: rgba(255, 255, 255, .25);
++  background: rgba(255, 255, 255, .08);
++  color: #fff;
++}
++
++.dashboard-page .dashboard-topbar .icon-button:hover,
++.dashboard-page .dashboard-topbar .header-button:hover {
++  background: #fff;
++  color: var(--dashboard-ink);
++}
++
++.dashboard-page .dashboard-content {
++  width: 100%;
++  max-width: 1660px;
++  min-width: 0;
++  margin-inline: auto;
++  padding: 20px clamp(20px, 2.15vw, 36px) 46px;
++}
++
++.dashboard-content .dash-hero {
++  position: relative;
++  min-height: 268px;
++  display: block;
++  overflow: hidden;
++  isolation: isolate;
++  padding: 27px 29px 15px;
++  border: 1px solid rgba(255, 255, 255, .24);
++  border-radius: 16px;
++  background-color: #087fd1;
++  background-image: linear-gradient(90deg, rgba(0, 91, 171, .88) 0%, rgba(0, 122, 202, .67) 47%, rgba(0, 139, 218, .26) 100%), url('/static/assets/blue-brush.webp');
++  background-position: center, center 48%;
++  background-size: cover;
++  box-shadow: 0 12px 25px rgba(0, 38, 103, .12);
++}
++
++.dashboard-content .dash-hero::before {
++  position: absolute;
++  z-index: -1;
++  inset: 0;
++  content: '';
++  background: linear-gradient(180deg, rgba(2, 102, 185, .03) 40%, rgba(0, 43, 107, .48));
++}
++
++.dashboard-content .dash-hero-copy {
++  position: relative;
++  z-index: 2;
++  width: min(58%, 700px);
++  max-width: 700px;
++  padding-bottom: 80px;
++}
++
++.dashboard-content .dash-hero .eyebrow {
++  margin: 0 0 10px;
++  color: rgba(255, 255, 255, .9);
++  font-size: 10px;
++  letter-spacing: .12em;
++}
++
++.dashboard-content .dash-hero h1 {
++  max-width: 700px;
++  margin: 0;
++  color: #fff;
++  font-size: clamp(39px, 4.35vw, 66px);
++  font-weight: 900;
++  line-height: .89;
++  letter-spacing: -.075em;
++  text-shadow: 0 2px 15px rgba(0, 36, 98, .16);
++  text-transform: uppercase;
++}
++
++.dashboard-content .dash-hero h1 span {
++  display: block;
++  color: var(--dashboard-ink);
++}
++
++.dashboard-content .dash-hero-copy > p:last-child {
++  max-width: 540px;
++  margin: 10px 0 0;
++  color: rgba(255, 255, 255, .9);
++  font-size: 12px;
++  line-height: 1.5;
++}
++
++.dashboard-content .dash-hero-art {
++  position: absolute;
++  z-index: 1;
++  top: -12%;
++  right: 2%;
++  width: 37%;
++  height: 105%;
++  object-fit: contain;
++  pointer-events: none;
++  filter: drop-shadow(0 15px 24px rgba(0, 28, 75, .25));
++}
++
++.dashboard-content .seller-dash-hero .dash-hero-art {
++  top: -10%;
++  right: 2%;
++  width: 34%;
++}
++
++.dashboard-content .dash-hero-product {
++  position: absolute;
++  z-index: 2;
++  width: 15%;
++  height: 36%;
++  object-fit: contain;
++  pointer-events: none;
++  filter: drop-shadow(0 10px 12px rgba(0, 28, 75, .2));
++}
++
++.dashboard-content .dash-hero-keyboard {
++  right: 26%;
++  top: 1%;
++  transform: rotate(-8deg);
++}
++
++.dashboard-content .dash-hero-watch {
++  right: 8%;
++  top: 8%;
++  transform: rotate(8deg);
++}
++
++.dashboard-content .dash-hero-metrics {
++  position: absolute;
++  z-index: 2;
++  right: 20px;
++  bottom: 14px;
++  left: 25px;
++  display: grid;
++  grid-template-columns: repeat(4, minmax(0, 1fr));
++  gap: 0;
++}
++
++.dashboard-content .dash-hero-empty {
++  position: static;
++  max-width: 640px;
++  padding: 12px 0 0;
++  color: rgba(255, 255, 255, .9);
++  font-size: 12px;
++}
++
++.dashboard-content .dash-hero-metric {
++  min-width: 0;
++  padding: 6px 17px 4px;
++  border-left: 1px solid rgba(255, 255, 255, .25);
++}
++
++.dashboard-content .dash-hero-metric:first-child {
++  padding-left: 2px;
++  border-left: 0;
++}
++
++.dashboard-content .dash-hero-metric small {
++  display: block;
++  color: rgba(255, 255, 255, .82);
++  font: 600 9px/1.4 'JetBrains Mono', monospace;
++  letter-spacing: .07em;
++  text-transform: uppercase;
++}
++
++.dashboard-content .dash-hero-metric strong {
++  display: block;
++  margin-top: 4px;
++  color: #fff;
++  font-size: clamp(17px, 1.8vw, 27px);
++  font-weight: 850;
++  line-height: 1.05;
++  letter-spacing: -.04em;
++  overflow-wrap: anywhere;
++}
++
++.dashboard-content .admin-overview-grid,
++.dashboard-content .seller-overview-grid {
++  display: grid;
++  grid-template-columns: minmax(0, 1.55fr) minmax(310px, 1fr);
++  align-items: start;
++  gap: 14px;
++  margin-top: 14px;
++}
++
++.dashboard-content .admin-overview-grid > *,
++.dashboard-content .seller-overview-grid > * {
++  min-width: 0;
++}
++
++.dashboard-content .dashboard-panel-stack {
++  display: grid;
++  gap: 14px;
++  min-width: 0;
++}
++
++.dashboard-content .panel {
++  min-width: 0;
++  padding: 17px;
++  border: 1px solid var(--dashboard-line);
++  border-radius: 13px;
++  background: var(--dashboard-panel);
++  box-shadow: 0 10px 24px rgba(0, 29, 78, .12);
++}
++
++.dashboard-content .panel h2 {
++  margin: 0;
++  color: #fff;
++  font-size: 17px;
++  font-weight: 800;
++  line-height: 1.25;
++  letter-spacing: -.025em;
++}
++
++.dashboard-content .panel h3 {
++  color: #fff;
++  font-size: 14px;
++}
++
++.dashboard-content .section-heading {
++  min-width: 0;
++  display: flex;
++  align-items: center;
++  justify-content: space-between;
++  gap: 12px;
++  margin: 0 0 13px;
++}
++
++.dashboard-content .section-heading > div {
++  min-width: 0;
++}
++
++.dashboard-content .section-heading .eyebrow {
++  margin: 0 0 4px;
++  color: #9ddaff;
++  font: 600 9px/1.4 'JetBrains Mono', monospace;
++  letter-spacing: .1em;
++}
++
++.dashboard-content .section-heading .btn {
++  flex: 0 0 auto;
++}
++
++.dashboard-content .payout-note {
++  display: flex;
++  align-items: baseline;
++  justify-content: space-between;
++  gap: 14px;
++  margin: 13px 0 0;
++  padding: 10px 14px;
++  border: 1px solid rgba(195, 232, 255, .24);
++  border-radius: 10px;
++  background: rgba(1, 45, 106, .23);
++}
++
++.dashboard-content .payout-note span {
++  color: rgba(255, 255, 255, .72);
++  font-size: 10px;
++  font-weight: 700;
++  text-transform: uppercase;
++  letter-spacing: .08em;
++}
++
++.dashboard-content .payout-note strong {
++  color: #fff;
++  font-size: 12px;
++  text-align: right;
++}
++
++.dashboard-content .dashboard-action-cards {
++  display: grid;
++  grid-template-columns: repeat(4, minmax(0, 1fr));
++  gap: 9px;
++  margin-top: 13px;
++}
++
++.dashboard-content .dashboard-action-card {
++  min-width: 0;
++  min-height: 66px;
++  display: flex;
++  align-items: center;
++  gap: 10px;
++  padding: 10px 12px;
++  border: 1px solid rgba(201, 231, 255, .18);
++  border-radius: 10px;
++  background: rgba(5, 28, 72, .72);
++  color: #fff;
++  text-align: left;
++  cursor: pointer;
++  transition: border-color .16s ease, background .16s ease, transform .16s ease;
++}
++
++.dashboard-content .dashboard-action-card:hover,
++.dashboard-content .dashboard-action-card:focus-visible {
++  transform: translateY(-1px);
++  border-color: rgba(255, 255, 255, .45);
++  background: #0a2c65;
++  outline-color: #fff;
++}
++
++.dashboard-content .dashboard-action-card > .bi:first-child {
++  flex: 0 0 33px;
++  width: 33px;
++  height: 33px;
++  display: grid;
++  place-items: center;
++  border-radius: 9px;
++  background: rgba(0, 165, 244, .18);
++  color: #82dcff;
++  font-size: 16px;
++}
++
++.dashboard-content .dashboard-action-card > span {
++  min-width: 0;
++  flex: 1 1 auto;
++}
++
++.dashboard-content .dashboard-action-card strong,
++.dashboard-content .dashboard-action-card small {
++  display: block;
++}
++
++.dashboard-content .dashboard-action-card strong {
++  color: #fff;
++  font-size: 11px;
++  line-height: 1.25;
++}
++
++.dashboard-content .dashboard-action-card small {
++  margin-top: 3px;
++  color: #b8d8f8;
++  font-size: 10px;
++  line-height: 1.35;
++}
++
++.dashboard-content .dashboard-action-card > .bi:last-child {
++  flex: 0 0 auto;
++  color: #82dcff;
++  font-size: 12px;
++}
++
++.dashboard-content .stock-list {
++  display: grid;
++  gap: 2px;
++}
++
++.dashboard-content .stock-row {
++  min-width: 0;
++  width: 100%;
++  display: flex;
++  align-items: center;
++  gap: 10px;
++  padding: 8px 2px;
++  border: 0;
++  border-top: 1px solid rgba(196, 224, 255, .1);
++  background: transparent;
++  color: #fff;
++  text-align: left;
++  cursor: pointer;
++}
++
++.dashboard-content .stock-row:first-child {
++  border-top: 0;
++}
++
++.dashboard-content .stock-row:hover .stock-copy strong {
++  color: #9ee5ff;
++}
++
++.dashboard-content .stock-thumb {
++  flex: 0 0 42px;
++  width: 42px;
++  height: 42px;
++  display: grid;
++  place-items: center;
++  overflow: hidden;
++  border-radius: 8px;
++  background: #eaf6ff;
++}
++
++.dashboard-content .stock-thumb img {
++  width: 100%;
++  height: 100%;
++  object-fit: contain;
++}
++
++.dashboard-content .stock-copy {
++  min-width: 0;
++  flex: 1 1 auto;
++}
++
++.dashboard-content .stock-copy strong,
++.dashboard-content .stock-copy small,
++.dashboard-content .stock-quantity strong,
++.dashboard-content .stock-quantity small {
++  display: block;
++}
++
++.dashboard-content .stock-copy strong {
++  overflow: hidden;
++  color: #fff;
++  font-size: 11px;
++  text-overflow: ellipsis;
++  white-space: nowrap;
++}
++
++.dashboard-content .stock-copy small {
++  margin-top: 2px;
++  color: #b8d5f5;
++  font-size: 10px;
++}
++
++.dashboard-content .stock-quantity {
++  flex: 0 0 auto;
++  min-width: 38px;
++  text-align: right;
++}
++
++.dashboard-content .stock-quantity strong {
++  color: #fff;
++  font: 700 13px/1.2 'JetBrains Mono', monospace;
++}
++
++.dashboard-content .stock-quantity small {
++  color: #b8d5f5;
++  font-size: 9px;
++}
++
++.dashboard-content .table-wrap {
++  width: 100%;
++  max-width: 100%;
++  overflow-x: auto;
++  overscroll-behavior-x: contain;
++  border: 1px solid rgba(201, 231, 255, .12);
++  border-radius: 9px;
++  scrollbar-color: rgba(153, 211, 255, .42) rgba(255, 255, 255, .06);
++}
++
++.dashboard-content table {
++  width: 100%;
++  min-width: 680px;
++  border-collapse: collapse;
++}
++
++.dashboard-content th,
++.dashboard-content td {
++  padding: 10px 11px;
++  border-bottom: 1px solid rgba(201, 231, 255, .1);
++  color: #f2f8ff;
++  font-size: 11px;
++  line-height: 1.45;
++  text-align: left;
++  vertical-align: middle;
++}
++
++.dashboard-content th {
++  color: #aed7f4;
++  background: rgba(255, 255, 255, .035);
++  font: 600 9px/1.4 'JetBrains Mono', monospace;
++  letter-spacing: .055em;
++  text-transform: uppercase;
++  white-space: nowrap;
++}
++
++.dashboard-content td strong {
++  color: #fff;
++  font-size: 11px;
++}
++
++.dashboard-content td small {
++  color: #b3cce8;
++  font-size: 10px;
++}
++
++.dashboard-content tr:last-child td {
++  border-bottom: 0;
++}
++
++.dashboard-content .actions {
++  gap: 6px;
++  margin-top: 0;
++}
++
++.dashboard-content .btn,
++.dashboard-content .button {
++  min-height: 33px;
++  padding: 0 11px;
++  border: 1px solid rgba(202, 230, 255, .25);
++  border-radius: 8px;
++  background: rgba(255, 255, 255, .08);
++  color: #fff;
++  font-size: 11px;
++  font-weight: 700;
++}
++
++.dashboard-content .btn:hover,
++.dashboard-content .button:hover {
++  border-color: rgba(255, 255, 255, .5);
++  background: rgba(255, 255, 255, .15);
++}
++
++.dashboard-content .btn-primary,
++.dashboard-content .button-primary {
++  border-color: #fff;
++  background: #fff;
++  color: var(--dashboard-ink);
++}
++
++.dashboard-content .btn-primary:hover,
++.dashboard-content .button-primary:hover {
++  background: #e8f7ff;
++}
++
++.dashboard-content .btn-danger {
++  border-color: rgba(255, 151, 164, .4);
++  background: rgba(185, 34, 65, .16);
++  color: #ffdce2;
++}
++
++.dashboard-content .btn-success {
++  border-color: rgba(91, 224, 173, .4);
++  background: rgba(37, 151, 118, .16);
++  color: #b9ffe3;
++}
++
++.dashboard-content .btn:disabled,
++.dashboard-content .button:disabled {
++  opacity: .5;
++  cursor: not-allowed;
++}
++
++.dashboard-content .status {
++  display: inline-flex;
++  align-items: center;
++  max-width: 100%;
++  padding: 4px 8px;
++  border: 1px solid rgba(214, 232, 255, .12);
++  border-radius: 999px;
++  background: rgba(255, 255, 255, .09);
++  color: #edf6ff;
++  font: 600 9px/1.2 'JetBrains Mono', monospace;
++  letter-spacing: .025em;
++  text-transform: uppercase;
++}
++
++.dashboard-content .status.paid,
++.dashboard-content .status.completed,
++.dashboard-content .status.resolved,
++.dashboard-content .status.broadcast,
++.dashboard-content .status.active {
++  background: rgba(37, 151, 118, .17);
++  color: #b9ffe3;
++}
++
++.dashboard-content .status.awaiting_payment,
++.dashboard-content .status.partial,
++.dashboard-content .status.open,
++.dashboard-content .status.draft,
++.dashboard-content .status.awaiting_signature {
++  background: rgba(176, 126, 17, .2);
++  color: #ffe4a0;
++}
++
++.dashboard-content .status.processing,
++.dashboard-content .status.under_review,
++.dashboard-content .status.shipped,
++.dashboard-content .status.partially_signed {
++  background: rgba(38, 132, 194, .22);
++  color: #b8e9ff;
++}
++
++.dashboard-content .status.cancelled,
++.dashboard-content .status.refunded {
++  background: rgba(185, 34, 65, .17);
++  color: #ffdce2;
++}
++
++.dashboard-content .input,
++.dashboard-content input,
++.dashboard-content select,
++.dashboard-content textarea {
++  max-width: 100%;
++  border-color: rgba(192, 222, 255, .25);
++  background: #f7fbff;
++  color: #10264a;
++}
++
++.dashboard-content .field label {
++  color: #d5e9ff;
++  font-size: 11px;
++  font-weight: 700;
++}
++
++.dashboard-content .field small,
++.dashboard-content .help {
++  display: block;
++  margin-top: 5px;
++  color: #c3dbf7;
++  font-size: 10px;
++  line-height: 1.45;
++}
++
++.dashboard-content .notice {
++  margin: 12px 0;
++  padding: 11px 13px;
++  border: 1px solid rgba(195, 232, 255, .2);
++  border-radius: 9px;
++  background: rgba(2, 48, 113, .32);
++  color: #edf7ff;
++  font-size: 11px;
++  line-height: 1.5;
++}
++
++.dashboard-content .notice-warning {
++  border-color: rgba(255, 209, 92, .36);
++  background: rgba(95, 66, 0, .25);
++}
++
++.dashboard-content .notice-danger {
++  border-color: rgba(255, 113, 129, .36);
++  background: rgba(93, 0, 25, .24);
++}
++
++.dashboard-content .notice-success {
++  border-color: rgba(91, 224, 173, .36);
++  background: rgba(0, 78, 58, .22);
++}
++
++.dashboard-content .empty {
++  padding: 22px 12px;
++  color: #c5dafa;
++  font-size: 12px;
++  text-align: center;
++}
++
++.dashboard-content .tabs {
++  display: flex;
++  flex-wrap: wrap;
++  gap: 7px;
++  margin: 12px 0;
++}
++
++.dashboard-content .tab {
++  min-height: 34px;
++  padding: 0 11px;
++  border: 1px solid rgba(255, 255, 255, .22);
++  border-radius: 8px;
++  background: rgba(0, 43, 119, .3);
++  color: #eaf6ff;
++  font-size: 11px;
++}
++
++.dashboard-content .tab.active {
++  background: #fff;
++  color: var(--dashboard-ink);
++  font-weight: 800;
++}
++
++.dashboard-content .section {
++  margin-top: 14px;
++}
++
++.dashboard-content .grid-2,
++.dashboard-content .grid-3,
++.dashboard-content .store-form-grid,
++.dashboard-content .quick-dashboard-grid {
++  min-width: 0;
++  gap: 13px;
++}
++
++.dashboard-content .grid-2 > *,
++.dashboard-content .grid-3 > *,
++.dashboard-content .store-form-grid > *,
++.dashboard-content .quick-dashboard-grid > * {
++  min-width: 0;
++}
++
++@media (max-width: 1120px) {
++  .dashboard-page .dashboard-layout {
++    grid-template-columns: 224px minmax(0, 1fr);
++  }
++
++  .dashboard-content .admin-overview-grid,
++  .dashboard-content .seller-overview-grid {
++    grid-template-columns: minmax(0, 1.35fr) minmax(265px, 1fr);
++  }
++
++  .dashboard-content .dashboard-action-cards {
++    grid-template-columns: repeat(2, minmax(0, 1fr));
++  }
++}
++
++@media (max-width: 760px) {
++  .dashboard-page .dashboard-layout {
++    display: grid;
++    grid-template-columns: minmax(0, 1fr);
++  }
++
++  .dashboard-page .dashboard-sidebar {
++    position: relative;
++    top: auto;
++    width: 100%;
++    height: auto;
++    padding: 12px 16px 9px;
++    border-right: 0;
++    border-bottom: 1px solid rgba(255, 255, 255, .2);
++  }
++
++  .dashboard-page .dashboard-brand {
++    font-size: 20px;
++  }
++
++  .dashboard-page .dashboard-brand .brand-mark {
++    flex-basis: 35px;
++    width: 35px;
++    height: 35px;
++    font-size: 18px;
++  }
++
++  .dashboard-page .sidebar-kicker {
++    margin: 10px 5px 7px;
++    font-size: 9px;
++  }
++
++  .dashboard-page .dashboard-nav {
++    display: flex;
++    max-width: 100%;
++    overflow-x: auto;
++    overscroll-behavior-x: contain;
++    gap: 5px;
++    padding: 1px 0 5px;
++    scrollbar-width: thin;
++    scrollbar-color: rgba(255, 255, 255, .38) transparent;
++  }
++
++  .dashboard-page .dashboard-nav-link {
++    min-height: 37px;
++    flex: 0 0 auto;
++    padding: 0 10px;
++    font-size: 11px;
++    white-space: nowrap;
++  }
++
++  .dashboard-page .dashboard-nav-link .bi {
++    font-size: 13px;
++  }
++
++  .dashboard-page .sidebar-profile,
++  .dashboard-page .sidebar-runtime {
++    display: none;
++  }
++
++  .dashboard-page .dashboard-topbar {
++    height: 56px;
++    padding-inline: 16px;
++  }
++
++  .dashboard-page .dashboard-topbar .header-button {
++    width: 36px;
++    min-width: 36px;
++    min-height: 36px;
++    justify-content: center;
++    padding: 0;
++    border-radius: 50%;
++  }
++
++  .dashboard-page .dashboard-topbar .header-button span {
++    display: none;
++  }
++
++  .dashboard-page .dashboard-topbar .icon-button {
++    width: 36px;
++    height: 36px;
++    min-height: 36px;
++  }
++
++  .dashboard-context {
++    overflow: hidden;
++    font-size: 11px;
++    text-overflow: ellipsis;
++    white-space: nowrap;
++  }
++
++  .dashboard-page .dashboard-content {
++    padding: 14px 15px 30px;
++  }
++
++  .dashboard-content .dash-hero {
++    min-height: 270px;
++    padding: 20px 18px 13px;
++    background-position: center, 58% center;
++  }
++
++  .dashboard-content .dash-hero-copy {
++    width: 70%;
++    padding-bottom: 116px;
++  }
++
++  .dashboard-content .dash-hero .eyebrow {
++    max-width: 100%;
++    font-size: 9px;
++  }
++
++  .dashboard-content .dash-hero h1 {
++    font-size: clamp(34px, 8.5vw, 51px);
++  }
++
++  .dashboard-content .dash-hero-copy > p:last-child {
++    max-width: 100%;
++    font-size: 11px;
++  }
++
++  .dashboard-content .dash-hero-art {
++    top: 3%;
++    right: -3%;
++    width: 42%;
++    height: 69%;
++    opacity: .78;
++  }
++
++  .dashboard-content .seller-dash-hero .dash-hero-art {
++    top: 4%;
++    right: 0;
++    width: 39%;
++    height: 66%;
++  }
++
++  .dashboard-content .dash-hero-product {
++    display: none;
++  }
++
++  .dashboard-content .dash-hero-metrics {
++    right: 13px;
++    bottom: 12px;
++    left: 16px;
++    grid-template-columns: repeat(2, minmax(0, 1fr));
++    row-gap: 8px;
++  }
++
++  .dashboard-content .dash-hero-metric {
++    padding: 4px 9px;
++  }
++
++  .dashboard-content .dash-hero-metric:nth-child(odd) {
++    padding-left: 1px;
++    border-left: 0;
++  }
++
++  .dashboard-content .dash-hero-metric small {
++    font-size: 8px;
++  }
++
++  .dashboard-content .dash-hero-metric strong {
++    font-size: 18px;
++  }
++
++  .dashboard-content .dash-hero-empty {
++    position: relative;
++    left: auto;
++    bottom: auto;
++    grid-template-columns: 1fr;
++    padding: 8px 0 0;
++    font-size: 11px;
++  }
++
++  .dashboard-content .admin-overview-grid,
++  .dashboard-content .seller-overview-grid {
++    grid-template-columns: minmax(0, 1fr);
++    gap: 11px;
++    margin-top: 11px;
++  }
++
++  .dashboard-content .dashboard-panel-stack {
++    gap: 11px;
++  }
++
++  .dashboard-content .panel {
++    padding: 14px;
++  }
++
++  .dashboard-content .section-heading {
++    gap: 9px;
++  }
++
++  .dashboard-content .section-heading h2 {
++    font-size: 15px;
++  }
++
++  .dashboard-content .dashboard-action-cards {
++    grid-template-columns: repeat(2, minmax(0, 1fr));
++    gap: 7px;
++  }
++
++  .dashboard-content .dashboard-action-card {
++    min-height: 62px;
++    gap: 7px;
++    padding: 8px;
++  }
++
++  .dashboard-content .dashboard-action-card > .bi:first-child {
++    flex-basis: 29px;
++    width: 29px;
++    height: 29px;
++    font-size: 14px;
++  }
++
++  .dashboard-content .dashboard-action-card strong {
++    font-size: 10px;
++  }
++
++  .dashboard-content .dashboard-action-card small {
++    font-size: 9px;
++  }
++
++  .dashboard-content .payout-note {
++    align-items: flex-start;
++    flex-direction: column;
++    gap: 4px;
++  }
++
++  .dashboard-content .payout-note strong {
++    text-align: left;
++  }
++
++  .dashboard-content .grid-2,
++  .dashboard-content .grid-3,
++  .dashboard-content .store-form-grid,
++  .dashboard-content .quick-dashboard-grid {
++    grid-template-columns: minmax(0, 1fr);
++  }
++}
++
++@media (max-width: 420px) {
++  .dashboard-page .dashboard-topbar {
++    padding-inline: 13px;
++  }
++
++  .dashboard-page .dashboard-actions {
++    gap: 6px;
++  }
++
++  .dashboard-page .dashboard-content {
++    padding-inline: 12px;
++  }
++
++  .dashboard-content .dash-hero {
++    min-height: 270px;
++    padding-inline: 15px;
++  }
++
++  .dashboard-content .dash-hero-copy {
++    width: 78%;
++    padding-bottom: 116px;
++  }
++
++  .dashboard-content .dash-hero h1 {
++    font-size: clamp(31px, 9vw, 39px);
++  }
++
++  .dashboard-content .dash-hero-art {
++    top: 7%;
++    right: -7%;
++    width: 42%;
++    height: 58%;
++    opacity: .55;
++  }
++
++  .dashboard-content .seller-dash-hero .dash-hero-art {
++    top: 8%;
++    right: -3%;
++    width: 40%;
++    height: 57%;
++  }
++
++  .dashboard-content .dash-hero-metrics {
++    right: 11px;
++    left: 13px;
++  }
++
++  .dashboard-content .dashboard-action-cards {
++    grid-template-columns: minmax(0, 1fr);
++  }
++
++  .dashboard-content .dashboard-action-card {
++    min-height: 54px;
++  }
++
++  .dashboard-content .section-heading {
++    align-items: flex-start;
++  }
++
++  .dashboard-content .section-heading .btn {
++    min-height: 31px;
++    padding-inline: 8px;
++    font-size: 10px;
++  }
++}
++
++@media (prefers-reduced-motion: reduce) {
++  .dashboard-page *,
++  .dashboard-page *::before,
++  .dashboard-page *::after {
++    scroll-behavior: auto !important;
++    transition-duration: .01ms !important;
++    animation-duration: .01ms !important;
++    animation-iteration-count: 1 !important;
++  }
++}
++
++.dashboard-page .dashboard-content {
++  --dashboard-gutter: clamp(20px, 2.15vw, 36px);
++}
++
++.dashboard-content .dash-hero {
++  min-height: 390px;
++  margin: -20px calc(0px - var(--dashboard-gutter)) 0;
++  padding: 27px calc(var(--dashboard-gutter) + 16px) 15px;
++  border: 0;
++  border-radius: 0;
++  background-color: #0092df;
++  background-image: none;
++  box-shadow: none;
++}
++
++.dashboard-content .dash-hero::before {
++  z-index: 1;
++  inset: 0 auto 0 0;
++  width: 61%;
++  content: '';
++  background: linear-gradient(90deg, #0092df 0%, #0092df 82%, rgba(0, 146, 223, 0) 100%);
++}
++
++.dashboard-content .dash-hero::after {
++  position: absolute;
++  z-index: 0;
++  top: 0;
++  right: 0;
++  width: 45%;
++  height: 72%;
++  content: '';
++  background: url('/static/assets/blue-brush.webp') right top / cover no-repeat;
++  pointer-events: none;
++}
++
++.dashboard-content .dash-hero-copy {
++  z-index: 3;
++  width: min(52%, 740px);
++  padding-bottom: 94px;
++}
++
++.dashboard-content .dash-hero h1 {
++  font-size: clamp(48px, 5.45vw, 80px);
++}
++
++.dashboard-content .dash-hero-art {
++  z-index: 2;
++  top: 2%;
++  right: 3%;
++  width: 35%;
++  height: 76%;
++}
++
++.dashboard-content .seller-dash-hero .dash-hero-art {
++  top: 1%;
++  right: 3%;
++  width: 33%;
++  height: 76%;
++}
++
++.dashboard-content .dash-hero-product {
++  top: 5%;
++  width: 12%;
++  height: 27%;
++}
++
++.dashboard-content .dash-hero-keyboard {
++  right: 25%;
++}
++
++.dashboard-content .dash-hero-watch {
++  right: 8%;
++  top: 7%;
++}
++
++.dashboard-content .dash-hero-metrics {
++  z-index: 3;
++  right: calc(var(--dashboard-gutter) + 16px);
++  bottom: 18px;
++  left: calc(var(--dashboard-gutter) + 16px);
++}
++
++.dashboard-content .dash-hero .eyebrow,
++.dashboard-content .dash-hero-copy > p:last-child,
++.dashboard-content .dash-hero-metric small {
++  color: #001039;
++}
++
++.dashboard-content .dash-hero-metric {
++  border-left-color: rgba(0, 43, 99, .28);
++}
++
++.dashboard-content .dash-hero-metric strong {
++  color: #fff;
++  text-shadow: 0 1px 5px rgba(0, 42, 105, .22);
++}
++
++.dashboard-content .dash-hero.seller-tab-products,
++.dashboard-content .dash-hero.seller-tab-orders,
++.dashboard-content .dash-hero.seller-tab-store,
++.dashboard-content .dash-hero.admin-dash-hero:not(.admin-tab-overview) {
++  min-height: 128px;
++  padding-block: 17px;
++}
++
++.dashboard-content .dash-hero.seller-tab-products .dash-hero-copy,
++.dashboard-content .dash-hero.seller-tab-orders .dash-hero-copy,
++.dashboard-content .dash-hero.seller-tab-store .dash-hero-copy,
++.dashboard-content .dash-hero.admin-dash-hero:not(.admin-tab-overview) .dash-hero-copy {
++  width: min(76%, 900px);
++  padding-bottom: 0;
++}
++
++.dashboard-content .dash-hero.seller-tab-products h1,
++.dashboard-content .dash-hero.seller-tab-orders h1,
++.dashboard-content .dash-hero.seller-tab-store h1,
++.dashboard-content .dash-hero.admin-dash-hero:not(.admin-tab-overview) h1 {
++  font-size: clamp(34px, 3.45vw, 48px);
++}
++
++.dashboard-content .dash-hero.seller-tab-products .dash-hero-copy > p:last-child,
++.dashboard-content .dash-hero.seller-tab-orders .dash-hero-copy > p:last-child,
++.dashboard-content .dash-hero.seller-tab-store .dash-hero-copy > p:last-child,
++.dashboard-content .dash-hero.admin-dash-hero:not(.admin-tab-overview) .dash-hero-copy > p:last-child,
++.dashboard-content .dash-hero.seller-tab-products .dash-hero-art,
++.dashboard-content .dash-hero.seller-tab-orders .dash-hero-art,
++.dashboard-content .dash-hero.seller-tab-store .dash-hero-art,
++.dashboard-content .dash-hero.admin-dash-hero:not(.admin-tab-overview) .dash-hero-art,
++.dashboard-content .dash-hero.seller-tab-products .dash-hero-product,
++.dashboard-content .dash-hero.seller-tab-orders .dash-hero-product,
++.dashboard-content .dash-hero.seller-tab-store .dash-hero-product,
++.dashboard-content .dash-hero.admin-dash-hero:not(.admin-tab-overview) .dash-hero-product,
++.dashboard-content .dash-hero.seller-tab-products .dash-hero-metrics,
++.dashboard-content .dash-hero.seller-tab-orders .dash-hero-metrics,
++.dashboard-content .dash-hero.seller-tab-store .dash-hero-metrics,
++.dashboard-content .dash-hero.admin-dash-hero:not(.admin-tab-overview) .dash-hero-metrics {
++  display: none;
++}
++
++.dashboard-content .seller-overview-grid > .dashboard-panel-stack:first-child {
++  gap: 13px;
++}
++
++.dashboard-content .seller-overview-grid .table-wrap table {
++  min-width: 760px;
++}
++
++.dashboard-content .seller-overview-grid td:last-child .actions {
++  flex-wrap: nowrap;
++  white-space: nowrap;
++}
++
++.dashboard-content .dashboard-action-card strong {
++  color: #fff;
++}
++
++.dashboard-content .stock-thumb-empty {
++  color: #0d4f87;
++  font-size: 17px;
++}
++
++@media (max-width: 760px) {
++  .dashboard-page .dashboard-content {
++    --dashboard-gutter: 15px;
++  }
++
++  .dashboard-content .dash-hero {
++    min-height: 284px;
++    margin: -14px calc(0px - var(--dashboard-gutter)) 0;
++    padding: 19px calc(var(--dashboard-gutter) + 3px) 13px;
++    background-position: center, 58% center;
++  }
++
++  .dashboard-content .dash-hero::before {
++    width: 80%;
++    background: linear-gradient(90deg, #0092df 0%, #0092df 86%, rgba(0, 146, 223, 0) 100%);
++  }
++
++  .dashboard-content .dash-hero::after {
++    top: 0;
++    width: 40%;
++    height: 30%;
++  }
++
++  .dashboard-content .dash-hero-copy {
++    z-index: 3;
++    width: 70%;
++    padding-bottom: 113px;
++  }
++
++  .dashboard-content .dash-hero h1 {
++    font-size: clamp(36px, 9vw, 55px);
++  }
++
++  .dashboard-content .dash-hero-art {
++    z-index: 2;
++    top: 5%;
++    right: 0;
++    width: 39%;
++    height: 57%;
++    opacity: .66;
++  }
++
++  .dashboard-content .seller-dash-hero .dash-hero-art {
++    top: 7%;
++    right: 1%;
++    width: 37%;
++    height: 53%;
++  }
++
++  .dashboard-content .dash-hero-metrics {
++    z-index: 3;
++    right: calc(var(--dashboard-gutter) + 2px);
++    bottom: 12px;
++    left: calc(var(--dashboard-gutter) + 2px);
++  }
++
++  .dashboard-content .dash-hero.seller-tab-products,
++  .dashboard-content .dash-hero.seller-tab-orders,
++  .dashboard-content .dash-hero.seller-tab-store,
++  .dashboard-content .dash-hero.admin-dash-hero:not(.admin-tab-overview) {
++    min-height: 112px;
++    padding-block: 14px;
++  }
++
++  .dashboard-content .dash-hero.seller-tab-products .dash-hero-copy,
++  .dashboard-content .dash-hero.seller-tab-orders .dash-hero-copy,
++  .dashboard-content .dash-hero.seller-tab-store .dash-hero-copy,
++  .dashboard-content .dash-hero.admin-dash-hero:not(.admin-tab-overview) .dash-hero-copy {
++    width: 100%;
++  }
++
++  .dashboard-content .dash-hero.seller-tab-products h1,
++  .dashboard-content .dash-hero.seller-tab-orders h1,
++  .dashboard-content .dash-hero.seller-tab-store h1,
++  .dashboard-content .dash-hero.admin-dash-hero:not(.admin-tab-overview) h1 {
++    font-size: clamp(31px, 8.5vw, 40px);
++  }
++}
++
++@media (max-width: 420px) {
++  .dashboard-page .dashboard-content {
++    --dashboard-gutter: 12px;
++  }
++
++  .dashboard-content .dash-hero {
++    min-height: 280px;
++    padding-inline: calc(var(--dashboard-gutter) + 3px);
++  }
++
++  .dashboard-content .dash-hero::before {
++    width: 82%;
++  }
++
++  .dashboard-content .dash-hero::after {
++    height: 27%;
++  }
++
++  .dashboard-content .dash-hero-copy {
++    width: 70%;
++  }
++
++  .dashboard-content .dash-hero h1 {
++    font-size: clamp(27px, 7.5vw, 30px);
++  }
++
++  .dashboard-content .dash-hero-metrics {
++    right: calc(var(--dashboard-gutter) + 1px);
++    left: calc(var(--dashboard-gutter) + 1px);
++  }
++
++  .dashboard-content .dash-hero.seller-tab-products,
++  .dashboard-content .dash-hero.seller-tab-orders,
++  .dashboard-content .dash-hero.seller-tab-store,
++  .dashboard-content .dash-hero.admin-dash-hero:not(.admin-tab-overview) {
++    min-height: 104px;
++  }
++}
+diff --git a/static/css/cart.css b/static/css/cart.css
+new file mode 100644
+--- /dev/null
++++ b/static/css/cart.css
+@@ -0,0 +1,584 @@
++.cart-page .cart-shell {
++  padding-block: 24px 64px;
++}
++
++.cart-page .cart-heading-row {
++  position: relative;
++  isolation: isolate;
++  min-height: 206px;
++  display: flex;
++  align-items: center;
++  justify-content: space-between;
++  gap: 20px;
++  overflow: hidden;
++  margin: 0 0 18px;
++  padding: 26px 30px;
++  background: #0092df;
++}
++
++.cart-page .cart-heading-copy {
++  position: relative;
++  z-index: 2;
++  width: min(58%, 760px);
++}
++
++.cart-page .cart-heading-copy .eyebrow {
++  margin: 0 0 10px;
++  color: #001039;
++}
++
++.cart-page .cart-heading-row h1 {
++  margin: 0;
++  color: #fff;
++  font-size: clamp(40px, 4.3vw, 64px);
++  line-height: .98;
++}
++
++.cart-page .cart-heading-row .title-ink {
++  color: #002b63;
++}
++
++.cart-page .cart-hero-art {
++  position: absolute;
++  z-index: 1;
++  top: -10px;
++  right: clamp(145px, 16%, 250px);
++  width: min(23%, 230px);
++  height: 218px;
++  object-fit: contain;
++  pointer-events: none;
++}
++
++.cart-page .cart-heading-row > .text-link {
++  position: relative;
++  z-index: 2;
++  align-self: flex-end;
++  margin: 0 0 1px auto;
++  white-space: nowrap;
++}
++
++.cart-page .checkout-steps {
++  margin: 0 0 22px;
++  border: 1px solid rgba(0, 43, 99, .2);
++  background: rgba(255, 255, 255, .14);
++}
++
++.cart-page .checkout-steps li {
++  color: #073a70;
++  background: rgba(255, 255, 255, .25);
++}
++
++.cart-page .checkout-steps li.current {
++  background: #000b35;
++  color: #fff;
++}
++
++.cart-page .cart-layout {
++  grid-template-columns: minmax(0, 1fr) minmax(292px, 350px);
++  align-items: start;
++  gap: 22px;
++}
++
++.cart-page .cart-lines {
++  min-width: 0;
++  gap: 14px;
++}
++
++.cart-page .cart-store-group {
++  min-width: 0;
++  overflow: hidden;
++  border: 1px solid rgba(0, 17, 68, .12);
++  border-radius: 16px;
++  background: #fff;
++  color: #001445;
++  box-shadow: 0 12px 30px rgba(0, 27, 79, .13);
++}
++
++.cart-page .cart-store-heading {
++  min-height: 62px;
++  display: flex;
++  align-items: center;
++  gap: 12px;
++  padding: 12px 18px;
++  border-bottom: 1px solid rgba(0, 17, 68, .12);
++}
++
++.cart-page .cart-store-heading > .bi {
++  color: #007fc8;
++  font-size: 18px;
++}
++
++.cart-page .cart-store-heading h2 {
++  min-width: 0;
++  flex: 1;
++  margin: 0;
++  color: #001445;
++  font-size: 16px;
++  line-height: 1.25;
++  overflow-wrap: anywhere;
++}
++
++.cart-page .cart-store-heading span {
++  color: #49637e;
++  font-size: 12px;
++  font-weight: 700;
++  white-space: nowrap;
++}
++
++.cart-page .cart-item {
++  min-width: 0;
++  min-height: 122px;
++  display: grid;
++  grid-template-columns: 100px minmax(0, 1fr) 126px 122px 40px;
++  align-items: center;
++  gap: 14px;
++  padding: 16px 18px;
++  border-bottom: 1px solid rgba(0, 17, 68, .1);
++  color: #001445;
++}
++
++.cart-page .cart-item:last-child {
++  border-bottom: 0;
++}
++
++.cart-page .cart-thumb {
++  width: 100px;
++  height: 90px;
++  display: block;
++  border-radius: 12px;
++  background: #eef7fc;
++  object-fit: contain;
++  padding: 6px;
++}
++
++.cart-page .cart-item-info {
++  min-width: 0;
++  display: grid;
++  gap: 7px;
++}
++
++.cart-page .cart-item-info > strong {
++  color: #001445;
++  font-size: 16px;
++  font-weight: 800;
++  line-height: 1.28;
++  overflow-wrap: anywhere;
++}
++
++.cart-page .cart-item-info > span {
++  color: #49637e;
++  font-size: 13px;
++  line-height: 1.35;
++}
++
++.cart-page .cart-line-total {
++  min-width: 0;
++  display: grid;
++  gap: 3px;
++}
++
++.cart-page .cart-line-total small {
++  color: #49637e;
++  font-size: 10px;
++  font-weight: 700;
++  letter-spacing: .08em;
++  text-transform: uppercase;
++}
++
++.cart-page .cart-item-price {
++  color: #001445;
++  font: 800 14px/1.3 'JetBrains Mono', monospace;
++  overflow-wrap: anywhere;
++}
++
++.cart-page .qty-control {
++  width: 122px;
++  height: 40px;
++  display: grid;
++  grid-template-columns: 34px minmax(30px, 1fr) 34px;
++  align-items: stretch;
++  overflow: hidden;
++  border: 1px solid rgba(0, 17, 68, .18);
++  border-radius: 10px;
++  background: #f2f8fc;
++}
++
++.cart-page .qty-control button {
++  min-width: 0;
++  height: 100%;
++  border: 0;
++  background: #e5f3fb;
++  color: #001445;
++  font-size: 16px;
++  font-weight: 800;
++  cursor: pointer;
++}
++
++.cart-page .qty-control button:hover {
++  background: #cceafa;
++}
++
++.cart-page .qty-control input {
++  width: 100%;
++  min-width: 0;
++  height: 100%;
++  border: 0;
++  outline: 0;
++  background: #fff;
++  color: #001445;
++  font: 700 13px 'JetBrains Mono', monospace;
++  text-align: center;
++  appearance: textfield;
++}
++
++.cart-page .qty-control input:focus-visible {
++  box-shadow: inset 0 0 0 2px #007fc8;
++}
++
++.cart-page .qty-control input::-webkit-inner-spin-button,
++.cart-page .qty-control input::-webkit-outer-spin-button {
++  margin: 0;
++  appearance: none;
++}
++
++.cart-page .remove-item {
++  width: 38px;
++  height: 38px;
++  display: grid;
++  place-items: center;
++  border: 1px solid rgba(0, 17, 68, .16);
++  border-radius: 10px;
++  background: #fff;
++  color: #a9233a;
++  cursor: pointer;
++}
++
++.cart-page .remove-item:hover {
++  border-color: #a9233a;
++  background: #fff1f3;
++}
++
++.cart-page .cart-summary {
++  position: sticky;
++  top: 18px;
++  padding: 24px;
++  border: 0;
++  border-radius: 16px;
++  background: #000b35;
++  color: #fff;
++  box-shadow: 0 18px 40px rgba(0, 20, 69, .2);
++}
++
++.cart-page .cart-summary-inner {
++  display: grid;
++  gap: 13px;
++}
++
++.cart-page .cart-summary .summary-label {
++  margin: 0;
++  color: #a9dfff;
++  font: 700 11px/1.3 'JetBrains Mono', monospace;
++  letter-spacing: .12em;
++  text-transform: uppercase;
++}
++
++.cart-page .summary-row,
++.cart-page .summary-total {
++  display: flex;
++  align-items: baseline;
++  justify-content: space-between;
++  gap: 12px;
++}
++
++.cart-page .summary-row {
++  padding-bottom: 12px;
++  border-bottom: 1px solid rgba(255, 255, 255, .18);
++  color: #d5efff;
++  font-size: 13px;
++}
++
++.cart-page .summary-row strong {
++  color: #fff;
++}
++
++.cart-page .summary-total {
++  margin: 0;
++  color: #fff;
++  font-size: 14px;
++}
++
++.cart-page .summary-total strong {
++  color: #fff;
++  font: 800 clamp(16px, 1.4vw, 21px)/1.25 'JetBrains Mono', monospace;
++  text-align: right;
++  overflow-wrap: anywhere;
++}
++
++.cart-page .cart-summary p {
++  margin: 0;
++  color: #d5efff;
++  font-size: 12px;
++  line-height: 1.5;
++}
++
++.cart-page .cart-summary .btn-primary {
++  width: 100%;
++  min-height: 48px;
++  margin-top: 2px;
++  border: 1px solid #fff;
++  background: #fff;
++  color: #000b35;
++  font-weight: 800;
++}
++
++.cart-page .cart-summary .btn-primary:hover {
++  background: #dceffc;
++}
++
++.cart-page .cart-summary small {
++  color: #a9dfff;
++  font-size: 11px;
++  line-height: 1.45;
++}
++
++.cart-page .cart-empty {
++  min-height: 250px;
++  display: grid;
++  justify-items: center;
++  align-content: center;
++  gap: 10px;
++  padding: 28px;
++  border: 1px solid rgba(0, 17, 68, .12);
++  border-radius: 16px;
++  background: #fff;
++  color: #001445;
++  text-align: center;
++}
++
++.cart-page .cart-empty .bi {
++  color: #007fc8;
++  font-size: 26px;
++}
++
++.cart-page .cart-empty h2,
++.cart-page .cart-empty p {
++  margin: 0;
++}
++
++.cart-page .cart-empty p {
++  color: #49637e;
++}
++
++.cart-page .cart-empty .btn-primary {
++  margin-top: 6px;
++  padding: 0 18px;
++  border: 1px solid #000b35;
++  border-radius: 9px;
++  background: #000b35;
++  color: #fff;
++  font-size: 13px;
++  font-weight: 800;
++  cursor: pointer;
++}
++
++.cart-page .cart-empty .btn-primary:hover {
++  background: #061842;
++}
++
++@media (max-width: 1100px) {
++  .cart-page .cart-layout {
++    grid-template-columns: minmax(0, 1fr);
++  }
++
++  .cart-page .cart-summary {
++    position: static;
++  }
++}
++
++@media (max-width: 760px) {
++  .cart-page .cart-shell {
++    padding-top: 18px;
++  }
++
++  .cart-page .cart-heading-row {
++    min-height: 192px;
++    align-items: flex-start;
++    padding: 20px 18px 58px;
++  }
++
++  .cart-page .cart-heading-copy {
++    width: 72%;
++  }
++
++  .cart-page .cart-heading-row h1 {
++    font-size: clamp(34px, 8vw, 46px);
++  }
++
++  .cart-page .cart-hero-art {
++    top: 8px;
++    right: -8px;
++    width: 38%;
++    height: 132px;
++  }
++
++  .cart-page .cart-heading-row > .text-link {
++    position: absolute;
++    right: auto;
++    bottom: 12px;
++    left: 18px;
++    min-height: 34px;
++    margin: 0;
++    padding: 0 10px;
++    border-radius: 7px;
++    background: #000b35;
++    font-size: 10px;
++  }
++
++  .cart-page .checkout-steps {
++    margin-bottom: 16px;
++  }
++
++  .cart-page .checkout-steps li {
++    justify-content: center;
++    padding: 7px 4px;
++    font-size: 0;
++  }
++
++  .cart-page .checkout-steps li span {
++    font-size: 10px;
++  }
++
++  .cart-page .cart-item {
++    grid-template-columns: 86px minmax(0, 1fr) 38px;
++    grid-template-areas:
++      'image info remove'
++      'image total remove'
++      'image quantity remove';
++    align-items: center;
++    gap: 8px 12px;
++    min-height: 0;
++    padding: 14px;
++  }
++
++  .cart-page .cart-thumb {
++    grid-area: image;
++    width: 86px;
++    height: 90px;
++  }
++
++  .cart-page .cart-item-info {
++    grid-area: info;
++    align-self: end;
++    gap: 4px;
++  }
++
++  .cart-page .cart-item-info > strong {
++    font-size: 14px;
++  }
++
++  .cart-page .cart-item-info > span {
++    font-size: 12px;
++  }
++
++  .cart-page .cart-line-total {
++    grid-area: total;
++    grid-template-columns: auto minmax(0, 1fr);
++    align-items: baseline;
++    gap: 8px;
++  }
++
++  .cart-page .cart-line-total small {
++    font-size: 9px;
++  }
++
++  .cart-page .cart-item-price {
++    font-size: 12px;
++  }
++
++  .cart-page .qty-control {
++    grid-area: quantity;
++    width: 116px;
++    height: 36px;
++  }
++
++  .cart-page .remove-item {
++    grid-area: remove;
++    align-self: start;
++    width: 36px;
++    height: 36px;
++  }
++
++  .cart-page .cart-summary {
++    padding: 20px;
++  }
++}
++
++@media (max-width: 420px) {
++  .cart-page .cart-heading-copy {
++    width: 74%;
++  }
++
++  .cart-page .cart-heading-copy .eyebrow {
++    max-width: 190px;
++    font-size: 10px;
++    letter-spacing: .1em;
++  }
++
++  .cart-page .cart-heading-row h1 {
++    font-size: clamp(31px, 8vw, 36px);
++  }
++
++  .cart-page .cart-hero-art {
++    top: 12px;
++    right: -10px;
++    width: 36%;
++    height: 120px;
++  }
++
++  .cart-page .cart-store-heading {
++    min-height: 56px;
++    gap: 9px;
++    padding: 10px 12px;
++  }
++
++  .cart-page .cart-store-heading h2 {
++    font-size: 14px;
++  }
++
++  .cart-page .cart-store-heading span {
++    font-size: 11px;
++  }
++
++  .cart-page .cart-item {
++    grid-template-columns: 72px minmax(0, 1fr) 34px;
++    gap: 8px 10px;
++    padding: 12px;
++  }
++
++  .cart-page .cart-thumb {
++    width: 72px;
++    height: 82px;
++  }
++
++  .cart-page .cart-line-total {
++    grid-template-columns: minmax(0, auto) minmax(0, 1fr);
++    gap: 6px;
++  }
++
++  .cart-page .cart-line-total small {
++    letter-spacing: .04em;
++  }
++
++  .cart-page .cart-item-price {
++    font-size: 11px;
++  }
++
++  .cart-page .qty-control {
++    width: 110px;
++    grid-template-columns: 32px minmax(28px, 1fr) 32px;
++  }
++
++  .cart-page .cart-summary {
++    padding: 18px;
++  }
++}

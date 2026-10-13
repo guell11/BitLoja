@@ -1,0 +1,1039 @@
+--- a/templates/index.html
++++ b/templates/index.html
+@@ -10,6 +10,10 @@
+   <link rel="preload" href="{{ url_for('static', filename='fonts/jetbrains-mono-variable-latin.woff2') }}" as="font" type="font/woff2" crossorigin>
+   <link rel="stylesheet" href="{{ url_for('static', filename='icons/bootstrap-icons.css') }}">
+   <link rel="stylesheet" href="{{ url_for('static', filename='css/bitloja.css') }}">
++  <link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}">
++  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
++  <link rel="stylesheet" href="{{ url_for('static', filename='css/cart.css') }}">
++  <link rel="stylesheet" href="{{ url_for('static', filename='css/glass.css') }}">
+   <script defer src="{{ url_for('static', filename='js/bitloja.js') }}"></script>
+ </head>
+ <body data-btc-network="{{ btc_network|e }}" data-btc-mode="{{ btc_mode|e }}">
+@@ -145,7 +149,8 @@
+     <section class="page cart-page hidden" id="cartView">
+       <div class="shell cart-shell">
+         <div class="cart-heading-row">
+-          <div><p class="eyebrow"><span class="eyebrow-rule" aria-hidden="true"></span> Revise antes de finalizar</p><h1>Seu <span class="title-ink">carrinho.</span></h1></div>
++          <div class="cart-heading-copy"><p class="eyebrow"><span class="eyebrow-rule" aria-hidden="true"></span> Revise antes de finalizar</p><h1>Seu <span class="title-ink">carrinho.</span></h1></div>
++          <img class="cart-hero-art" src="{{ url_for('static', filename='assets/bitcoin-cart.webp') }}" alt="" aria-hidden="true">
+           <button class="text-link" type="button" data-action="catalog"><i class="bi bi-arrow-left" aria-hidden="true"></i> Continuar comprando</button>
+         </div>
+         <ol class="checkout-steps" aria-label="Etapas da compra"><li class="current"><span>1</span>Carrinho</li><li><span>2</span>Checkout</li><li><span>3</span>Pagamento</li><li><span>4</span>Confirmação</li></ol>
+@@ -156,9 +161,73 @@
+       </div>
+     </section>
+ 
+-    <section class="page wallet-page hidden" id="walletView"><div class="shell page-shell"><div class="page-intro"><div><p class="eyebrow"><span class="eyebrow-rule" aria-hidden="true"></span> Carteira Bitcoin</p><h1>Carteira e <span class="title-ink">movimentações.</span></h1></div><p>Estado e operações carregados pela API da carteira.</p></div><div id="walletContent" aria-live="polite"></div></div></section>
+-
+-    <section class="page custody-page hidden" id="custodyView"><div class="shell page-shell"><div class="page-intro"><div><p class="eyebrow"><span class="eyebrow-rule" aria-hidden="true"></span> Pagamentos</p><h1>Bitcoin, <span class="title-ink">sem atalhos.</span></h1></div><p>Entenda os métodos disponíveis neste servidor e configure sua chave pública.</p></div><div id="custodyContent" aria-live="polite"></div></div></section>
++    <section class="page wallet-page financial-page hidden" id="walletView">
++      <div class="dashboard-layout financial-dashboard-layout">
++        <aside class="dashboard-sidebar financial-sidebar">
++          <a class="dashboard-brand" href="/" data-action="home"><span class="brand-mark"><i class="bi bi-box-seam" aria-hidden="true"></i></span><span>BitLoja</span></a>
++          <p class="sidebar-kicker" data-financial-kicker></p>
++          <nav class="dashboard-nav financial-nav" data-financial-nav aria-label="Navegação financeira">
++            <div class="financial-role-nav hidden" data-financial-role="seller">
++              <button class="dashboard-nav-link" type="button" data-seller-tab="overview"><i class="bi bi-grid-1x2" aria-hidden="true"></i> Visão geral</button>
++              <button class="dashboard-nav-link" type="button" data-seller-tab="products"><i class="bi bi-box-seam" aria-hidden="true"></i> Produtos</button>
++              <button class="dashboard-nav-link" type="button" data-seller-tab="orders"><i class="bi bi-receipt" aria-hidden="true"></i> Pedidos</button>
++              <button class="dashboard-nav-link" type="button" data-seller-tab="store"><i class="bi bi-shop" aria-hidden="true"></i> Minha loja</button>
++            </div>
++            <div class="financial-role-nav hidden" data-financial-role="admin">
++              <button class="dashboard-nav-link" type="button" data-admin-tab="overview"><i class="bi bi-grid-1x2" aria-hidden="true"></i> Visão geral</button>
++              <button class="dashboard-nav-link" type="button" data-admin-tab="settlements"><i class="bi bi-arrow-left-right" aria-hidden="true"></i> Liquidações</button>
++              <button class="dashboard-nav-link" type="button" data-admin-tab="treasury"><i class="bi bi-safe2" aria-hidden="true"></i> Tesouraria</button>
++              <button class="dashboard-nav-link" type="button" data-admin-tab="disputes"><i class="bi bi-shield-exclamation" aria-hidden="true"></i> Disputas</button>
++              <button class="dashboard-nav-link" type="button" data-admin-tab="users"><i class="bi bi-people" aria-hidden="true"></i> Usuários e lojas</button>
++              <button class="dashboard-nav-link" type="button" data-admin-tab="audit"><i class="bi bi-journal-text" aria-hidden="true"></i> Auditoria</button>
++            </div>
++            <button class="dashboard-nav-link" type="button" data-view="wallet"><i class="bi bi-wallet2" aria-hidden="true"></i> Carteira</button>
++            <button class="dashboard-nav-link" type="button" data-view="custody"><i class="bi bi-shield-lock" aria-hidden="true"></i> Bitcoin</button>
++            <button class="dashboard-nav-link" type="button" data-action="home"><i class="bi bi-arrow-up-right-square" aria-hidden="true"></i> Ver marketplace</button>
++          </nav>
++          <div class="sidebar-profile financial-profile"><strong data-financial-name>Conta</strong><small data-financial-email></small></div>
++          <p class="sidebar-runtime">REDE · {{ btc_network|e }} / {{ btc_mode|e }}</p>
++        </aside>
++        <div class="dashboard-main financial-main">
++          <div class="dashboard-topbar financial-topbar"><span class="dashboard-context" data-financial-context>Carteira Bitcoin</span><div class="dashboard-actions"><button class="icon-button" type="button" data-action="notifications" aria-label="Notificações"><i class="bi bi-bell" aria-hidden="true"></i></button><button class="header-button" type="button" data-action="account-menu"><i class="bi bi-person-circle" aria-hidden="true"></i><span data-financial-name>Conta</span></button></div></div>
++          <div class="dashboard-content financial-content" id="walletContent" tabindex="-1" aria-live="polite"></div>
++        </div>
++      </div>
++    </section>
++
++    <section class="page custody-page financial-page hidden" id="custodyView">
++      <div class="dashboard-layout financial-dashboard-layout">
++        <aside class="dashboard-sidebar financial-sidebar">
++          <a class="dashboard-brand" href="/" data-action="home"><span class="brand-mark"><i class="bi bi-box-seam" aria-hidden="true"></i></span><span>BitLoja</span></a>
++          <p class="sidebar-kicker" data-financial-kicker></p>
++          <nav class="dashboard-nav financial-nav" data-financial-nav aria-label="Navegação financeira">
++            <div class="financial-role-nav hidden" data-financial-role="seller">
++              <button class="dashboard-nav-link" type="button" data-seller-tab="overview"><i class="bi bi-grid-1x2" aria-hidden="true"></i> Visão geral</button>
++              <button class="dashboard-nav-link" type="button" data-seller-tab="products"><i class="bi bi-box-seam" aria-hidden="true"></i> Produtos</button>
++              <button class="dashboard-nav-link" type="button" data-seller-tab="orders"><i class="bi bi-receipt" aria-hidden="true"></i> Pedidos</button>
++              <button class="dashboard-nav-link" type="button" data-seller-tab="store"><i class="bi bi-shop" aria-hidden="true"></i> Minha loja</button>
++            </div>
++            <div class="financial-role-nav hidden" data-financial-role="admin">
++              <button class="dashboard-nav-link" type="button" data-admin-tab="overview"><i class="bi bi-grid-1x2" aria-hidden="true"></i> Visão geral</button>
++              <button class="dashboard-nav-link" type="button" data-admin-tab="settlements"><i class="bi bi-arrow-left-right" aria-hidden="true"></i> Liquidações</button>
++              <button class="dashboard-nav-link" type="button" data-admin-tab="treasury"><i class="bi bi-safe2" aria-hidden="true"></i> Tesouraria</button>
++              <button class="dashboard-nav-link" type="button" data-admin-tab="disputes"><i class="bi bi-shield-exclamation" aria-hidden="true"></i> Disputas</button>
++              <button class="dashboard-nav-link" type="button" data-admin-tab="users"><i class="bi bi-people" aria-hidden="true"></i> Usuários e lojas</button>
++              <button class="dashboard-nav-link" type="button" data-admin-tab="audit"><i class="bi bi-journal-text" aria-hidden="true"></i> Auditoria</button>
++            </div>
++            <button class="dashboard-nav-link" type="button" data-view="wallet"><i class="bi bi-wallet2" aria-hidden="true"></i> Carteira</button>
++            <button class="dashboard-nav-link" type="button" data-view="custody"><i class="bi bi-shield-lock" aria-hidden="true"></i> Bitcoin</button>
++            <button class="dashboard-nav-link" type="button" data-action="home"><i class="bi bi-arrow-up-right-square" aria-hidden="true"></i> Ver marketplace</button>
++          </nav>
++          <div class="sidebar-profile financial-profile"><strong data-financial-name>Conta</strong><small data-financial-email></small></div>
++          <p class="sidebar-runtime">REDE · {{ btc_network|e }} / {{ btc_mode|e }}</p>
++        </aside>
++        <div class="dashboard-main financial-main">
++          <div class="dashboard-topbar financial-topbar"><span class="dashboard-context" data-financial-context>Pagamentos Bitcoin</span><div class="dashboard-actions"><button class="icon-button" type="button" data-action="notifications" aria-label="Notificações"><i class="bi bi-bell" aria-hidden="true"></i></button><button class="header-button" type="button" data-action="account-menu"><i class="bi bi-person-circle" aria-hidden="true"></i><span data-financial-name>Conta</span></button></div></div>
++          <div class="dashboard-content financial-content" id="custodyContent" tabindex="-1" aria-live="polite"></div>
++        </div>
++      </div>
++    </section>
+ 
+     <section class="page dashboard-page hidden" id="sellerView">
+       <div class="dashboard-layout">
+@@ -178,8 +247,8 @@
+           <p class="sidebar-runtime">REDE · {{ btc_network|e }} / {{ btc_mode|e }}</p>
+         </aside>
+         <div class="dashboard-main">
+-          <div class="dashboard-topbar"><span class="dashboard-search-label"><i class="bi bi-search" aria-hidden="true"></i> Loja, produtos e pedidos</span><div class="dashboard-actions"><button class="icon-button" type="button" data-action="notifications" aria-label="Notificações"><i class="bi bi-bell" aria-hidden="true"></i></button><button class="header-button" type="button" data-action="account-menu"><i class="bi bi-person-circle" aria-hidden="true"></i><span id="sellerTopLabel">Conta</span></button></div></div>
+-          <div class="dashboard-content" id="sellerContent" aria-live="polite"></div>
++          <div class="dashboard-topbar"><span class="dashboard-context">Operação da loja</span><div class="dashboard-actions"><button class="icon-button" type="button" data-action="notifications" aria-label="Notificações"><i class="bi bi-bell" aria-hidden="true"></i></button><button class="header-button" type="button" data-action="account-menu"><i class="bi bi-person-circle" aria-hidden="true"></i><span id="sellerTopLabel">Conta</span></button></div></div>
++          <div class="dashboard-content" id="sellerContent" tabindex="-1" aria-live="polite"></div>
+         </div>
+       </div>
+     </section>
+@@ -204,8 +273,8 @@
+           <p class="sidebar-runtime">REDE · {{ btc_network|e }} / {{ btc_mode|e }}</p>
+         </aside>
+         <div class="dashboard-main">
+-          <div class="dashboard-topbar"><span class="dashboard-search-label"><i class="bi bi-search" aria-hidden="true"></i> Pedidos, usuários e pagamentos</span><div class="dashboard-actions"><button class="icon-button" type="button" data-action="notifications" aria-label="Notificações"><i class="bi bi-bell" aria-hidden="true"></i></button><button class="header-button" type="button" data-action="account-menu"><i class="bi bi-person-circle" aria-hidden="true"></i><span id="adminTopLabel">Conta</span></button></div></div>
+-          <div class="dashboard-content" id="adminContent" aria-live="polite"></div>
++          <div class="dashboard-topbar"><span class="dashboard-context">Administração da plataforma</span><div class="dashboard-actions"><button class="icon-button" type="button" data-action="notifications" aria-label="Notificações"><i class="bi bi-bell" aria-hidden="true"></i></button><button class="header-button" type="button" data-action="account-menu"><i class="bi bi-person-circle" aria-hidden="true"></i><span id="adminTopLabel">Conta</span></button></div></div>
++          <div class="dashboard-content" id="adminContent" tabindex="-1" aria-live="polite"></div>
+         </div>
+       </div>
+     </section>
+--- a/static/js/bitloja.js
++++ b/static/js/bitloja.js
+@@ -39,7 +39,8 @@
+     csrf: '', user: null, products: [], stores: [], cartCount: 0, cart: null,
+     admin: null, seller: null, sellerTab: 'overview', adminTab: 'overview',
+     activeView: 'home', currentProduct: null, notifications: [], unreadCount: 0,
+-    wallet: null, custody: null, searchOpen: false, mobileMenuOpen: false
++    wallet: null, custody: null, searchOpen: false, mobileMenuOpen: false,
++    authRole: 'buyer', modalReturnFocus: null
+   };
+   const config = {
+     btcMode: document.body.dataset.btcMode || 'demo',
+@@ -49,12 +50,6 @@
+ 
+   function productImage(product) {
+     const text = `${product?.name || ''} ${product?.category || ''}`.toLocaleLowerCase('pt-BR');
+-    const id = idOf(product?.id);
+-    const fallbackById = {
+-      1: productPhotos.headset, 2: productPhotos.keyboard, 3: productPhotos.ssd,
+-      4: productPhotos.watch, 5: productPhotos.backpack, 6: productPhotos.lamp,
+-      7: productPhotos.bottle, 8: productPhotos.organizer
+-    };
+     const key = text.includes('head') ? 'headset' : text.includes('tecl') ? 'keyboard' :
+       text.includes('ssd') || text.includes('hardware') ? 'ssd' :
+       text.includes('watch') || text.includes('wear') || text.includes('smartwatch') ? 'watch' :
+@@ -62,13 +57,8 @@
+       text.includes('lumin') || text.includes('lamp') ? 'lamp' :
+       text.includes('garrafa') || text.includes('bottle') ? 'bottle' :
+       text.includes('organ') || text.includes('grid') ? 'organizer' : '';
+-    const candidate = String(product?.image_url || '').trim();
+-    if (candidate.startsWith('/static/')) return candidate;
+-    try {
+-      const url = new URL(candidate, location.origin);
+-      if (url.protocol === 'https:' || url.origin === location.origin) return url.href;
+-    } catch (_) { /* Invalid seller image URL falls back to catalog asset. */ }
+-    return productPhotos[key] || fallbackById[id] || productPhotos.organizer;
++    const fallback = productPhotos[key] || '';
++    return safeImage(product?.image_url) || fallback;
+   }
+ 
+   async function api(path, options = {}) {
+@@ -149,6 +139,36 @@
+     return `<span class="stars" aria-label="Nota ${esc(rating || 0)} de 5">${Array.from({ length: 5 }, (_, i) => `<i class="bi ${i < count ? 'bi-star-fill' : 'bi-star'}" aria-hidden="true"></i>`).join('')}</span>`;
+   }
+ 
++  function syncFinancialShell(view) {
++    const page = $(`#${view}View`);
++    if (!page) return false;
++    const role = state.user?.role || 'buyer';
++    const dashboardRole = ['seller', 'admin'].includes(role);
++    page.classList.toggle('dashboard-page', dashboardRole);
++    page.classList.toggle('financial-page--dashboard', dashboardRole);
++    page.classList.toggle('financial-page--buyer', !dashboardRole);
++    $$('[data-financial-role]', page).forEach(group => {
++      group.classList.toggle('hidden', group.dataset.financialRole !== role);
++    });
++    $$('[data-financial-name]', page).forEach(element => { element.textContent = state.user?.name || 'Conta'; });
++    $$('[data-financial-email]', page).forEach(element => { element.textContent = state.user?.email || ''; });
++    const context = $('[data-financial-context]', page);
++    if (context) context.textContent = view === 'wallet' ? 'Carteira Bitcoin' : 'Pagamentos Bitcoin';
++    const kicker = $('[data-financial-kicker]', page);
++    if (kicker) kicker.textContent = role === 'admin' ? 'Administração · controle' : role === 'seller' ? 'Painel do vendedor' : '';
++    const nav = $('[data-financial-nav]', page);
++    nav?.setAttribute('aria-label', role === 'admin' ? 'Navegação administrativa' : role === 'seller' ? 'Navegação do vendedor' : 'Navegação financeira');
++    $$('.dashboard-nav-link', page).forEach(link => {
++      const active = link.dataset.view === view
++        || (view === 'seller' && role === 'seller' && link.dataset.sellerTab === state.sellerTab)
++        || (view === 'admin' && role === 'admin' && link.dataset.adminTab === state.adminTab);
++      link.classList.toggle('active', active);
++      if (active) link.setAttribute('aria-current', 'page');
++      else link.removeAttribute('aria-current');
++    });
++    return dashboardRole;
++  }
++
+   function showView(name) {
+     const target = $(`#${name}View`);
+     if (!target) return;
+@@ -167,8 +187,18 @@
+     }
+     $$('#main > .page').forEach(page => page.classList.toggle('hidden', page !== target));
+     state.activeView = name;
++    const isFinancialView = ['wallet', 'custody'].includes(name);
++    const financialDashboard = isFinancialView ? syncFinancialShell(name) : false;
++    const isDashboard = ['seller', 'admin'].includes(name) || financialDashboard;
++    $('#siteHeader').classList.toggle('hidden', isDashboard);
+     $$('.nav-link[data-view]').forEach(link => link.classList.toggle('active', link.dataset.view === name));
+-    $('#siteFooter').classList.toggle('hidden', ['seller', 'admin'].includes(name));
++    $$('.dashboard-nav-link[data-view]').forEach(link => {
++      const active = link.dataset.view === name;
++      link.classList.toggle('active', active);
++      if (active) link.setAttribute('aria-current', 'page');
++      else link.removeAttribute('aria-current');
++    });
++    $('#siteFooter').classList.toggle('hidden', isDashboard);
+     closeMobileMenu();
+     window.scrollTo({ top: 0, behavior: 'smooth' });
+     if (name === 'catalog') loadProducts();
+@@ -183,7 +213,12 @@
+ 
+   function renderSession() {
+     const label = $('#accountLabel');
+-    label.textContent = state.user ? String(state.user.name || 'Conta').trim().split(/\s+/)[0] : 'Entrar';
++    const accountName = String(state.user?.name || 'Conta').trim() || 'Conta';
++    label.textContent = state.user ? accountName.split(/\s+/)[0] : 'Entrar';
++    $$('[data-action="account-menu"]').forEach(button => {
++      button.setAttribute('aria-label', state.user ? `Abrir conta de ${accountName}` : 'Entrar');
++      button.setAttribute('aria-haspopup', 'dialog');
++    });
+     $('#cartBadge').textContent = String(state.cartCount || 0);
+     $('#cartBtn').classList.toggle('hidden', !state.user);
+     $('#notificationsBtn').classList.toggle('hidden', !state.user);
+@@ -222,6 +257,7 @@
+       await Promise.all([loadProducts(), loadStores()]);
+       if (state.user) refreshNotificationBadge();
+     } catch (error) {
++      renderSession();
+       toast(error.message, 'error');
+       await Promise.all([loadProducts(), loadStores()]);
+     }
+@@ -230,13 +266,16 @@
+   function renderProductCard(product) {
+     const id = idOf(product.id);
+     const image = productImage(product);
++    const fallback = productImage({ ...product, image_url: '' });
+     const stock = num(product.stock);
+     const reviewCount = idOf(product.review_count);
+     const rating = num(product.rating);
+     const compare = num(product.compare_at_sats) > num(product.price_sats);
+-    const fallback = productPhotos[id === 1 ? 'headset' : id === 2 ? 'keyboard' : id === 3 ? 'ssd' : id === 4 ? 'watch' : id === 5 ? 'backpack' : id === 6 ? 'lamp' : id === 7 ? 'bottle' : 'organizer'];
++    const imageMarkup = image
++      ? `<img class="product-image" data-image-context="card" src="${esc(image)}"${fallback && fallback !== image ? ` data-fallback="${esc(fallback)}"` : ''} alt="${esc(product.name)}" loading="lazy">`
++      : `<img class="product-image is-missing" data-image-context="card" alt="${esc(product.name)}" loading="lazy">`;
+     return `<article class="product-card" data-product-card="${id}">
+-      <div class="product-media"><button class="product-open" type="button" data-action="open-product" data-id="${id}" aria-label="Ver ${esc(product.name)}"><img class="product-image" src="${esc(image)}" data-fallback="${esc(fallback)}" alt="${esc(product.name)}" loading="lazy"></button></div>
++      <div class="product-media"><button class="product-open" type="button" data-action="open-product" data-id="${id}" aria-label="Ver ${esc(product.name)}">${imageMarkup}</button></div>
+       <div class="product-info"><span class="product-store">${esc(product.store_name || 'Loja')}</span><strong class="product-name">${esc(product.name)}</strong>
+         ${reviewCount ? `<span class="product-rating">${stars(rating)} <span>${rating.toFixed(1)} · ${reviewCount}</span></span>` : '<span class="product-rating empty-rating">Sem avaliações</span>'}
+         <div class="product-bottom"><span>${compare ? `<span class="old-price">₿ ${esc(product.compare_at_btc)}</span>` : ''}<strong class="product-price">₿ ${esc(product.price_btc)}</strong><span class="product-stock ${stock < 1 ? 'out' : ''}">${stock > 0 ? `${stock} em estoque` : 'Indisponível'}</span></span><button class="product-add" type="button" data-action="add-cart" data-id="${id}" aria-label="Adicionar ${esc(product.name)} ao carrinho" ${stock < 1 ? 'disabled' : ''}><i class="bi bi-bag-plus" aria-hidden="true"></i></button></div>
+@@ -266,6 +305,8 @@
+   }
+ 
+   async function loadProducts() {
++    const focusRoot = [$('#catalogGrid'), $('#productGrid')].find(isVisibleFocusTarget) || $('#catalogGrid') || $('#productGrid');
++    const previousFocus = captureFocusTarget();
+     const search = String($('#searchInput')?.value || '').trim();
+     const category = String($('#categoryFilter')?.value || '');
+     const sort = String($('#sortFilter')?.value || 'featured');
+@@ -289,6 +330,8 @@
+         const grid = $(`#${id}`);
+         if (grid) grid.innerHTML = `<div class="notice notice-danger">${esc(error.message)}</div>`;
+       }
++    } finally {
++      focusUpdatedContent(focusRoot, previousFocus);
+     }
+   }
+ 
+@@ -316,68 +359,218 @@
+     } catch (_) { return ''; }
+   }
+ 
++  function markProductImageMissing(image) {
++    const context = image.dataset.imageContext;
++    const label = image.dataset.imageLabel || image.alt || '';
++    image.removeAttribute('src');
++    image.removeAttribute('data-fallback');
++    image.removeAttribute('data-fallback-attempted');
++    if (context === 'card' || image.closest('.product-media')) {
++      image.classList.add('is-missing');
++      return;
++    }
++    const icon = document.createElement('i');
++    icon.className = context === 'stock' ? 'bi bi-box-seam' : 'bi bi-image';
++    icon.setAttribute('aria-hidden', 'true');
++    if (context === 'detail') {
++      const placeholder = document.createElement('div');
++      placeholder.className = 'product-image-empty';
++      placeholder.setAttribute('role', 'img');
++      placeholder.setAttribute('aria-label', `Imagem não cadastrada${label ? ` para ${label}` : ''}`);
++      const caption = document.createElement('span');
++      caption.textContent = 'Imagem não cadastrada';
++      placeholder.append(icon, caption);
++      image.replaceWith(placeholder);
++      return;
++    }
++    const container = context === 'cart' ? image.closest('.cart-thumb') : context === 'stock' ? image.closest('.stock-thumb') : null;
++    if (container) {
++      container.setAttribute('role', 'img');
++      container.setAttribute('aria-label', `Imagem não cadastrada${label ? ` para ${label}` : ''}`);
++      if (context === 'cart') container.classList.add('cart-thumb-empty');
++      if (context === 'stock') container.classList.add('stock-thumb-empty');
++      image.replaceWith(icon);
++      return;
++    }
++    image.classList.add('is-missing');
++  }
++
+   async function loadStores() {
+-    if ($('#storeGrid')) setLoading($('#storeGrid'), 'Carregando lojas');
++    const root = $('#storeGrid');
++    const previousFocus = captureFocusTarget();
++    if (root) setLoading(root, 'Carregando lojas');
+     try {
+       const data = await api('/api/stores');
+       state.stores = Array.isArray(data.stores) ? data.stores : [];
+-      $('#storeGrid').innerHTML = state.stores.length ? state.stores.map(renderStoreCard).join('') : '<div class="empty">Nenhuma loja cadastrada.</div>';
++      if (root) root.innerHTML = state.stores.length ? state.stores.map(renderStoreCard).join('') : '<div class="empty">Nenhuma loja cadastrada.</div>';
+     } catch (error) {
+-      if ($('#storeGrid')) $('#storeGrid').innerHTML = `<div class="notice notice-danger">${esc(error.message)}</div>`;
++      if (root) root.innerHTML = `<div class="notice notice-danger">${esc(error.message)}</div>`;
++    } finally {
++      focusUpdatedContent(root, previousFocus);
+     }
+   }
+ 
+   function openModal(title, body, wide = false) {
+     const root = $('#modalRoot');
+-    root.innerHTML = `<div class="modal-wrap"><section class="modal ${wide ? 'wide' : ''}" role="dialog" aria-modal="true" aria-labelledby="activeModalTitle" tabindex="-1"><header class="modal-head"><h2 id="activeModalTitle">${esc(title)}</h2><button class="close-btn" type="button" data-action="close-modal" aria-label="Fechar"><i class="bi bi-x-lg" aria-hidden="true"></i></button></header><div class="modal-body">${body}</div></section></div>`;
++    if (!root.querySelector('.modal')) {
++      state.modalReturnFocus = document.activeElement instanceof HTMLElement && document.activeElement !== document.body
++        ? document.activeElement
++        : null;
++    }
++    root.innerHTML = `<div class="modal-wrap"><section class="modal ${wide ? 'wide' : ''}" role="dialog" aria-modal="true" aria-labelledby="activeModalTitle" tabindex="-1"><header class="modal-head"><h2 id="activeModalTitle">${esc(title)}</h2><button class="modal-close" type="button" data-action="close-modal" aria-label="Fechar"><i class="bi bi-x-lg" aria-hidden="true"></i></button></header><div class="modal-body">${body}</div></section></div>`;
+     const wrap = $('.modal-wrap', root);
+     wrap.addEventListener('click', event => { if (event.target === wrap) closeModal(); });
+     const first = $('input:not([type="hidden"]), select, textarea, button, a[href]', wrap);
+     (first || $('.modal', wrap)).focus();
+   }
+ 
+-  function closeModal() {
++  function closeModal({ restoreFocus = true } = {}) {
++    const returnFocus = state.modalReturnFocus;
+     $('#modalRoot').replaceChildren();
+-  }
+-
+-  function openAuth(tab = 'login') {
+-    const body = `<div class="auth-tabs" role="tablist" aria-label="Acesso"><button class="auth-tab ${tab === 'login' ? 'active' : ''}" type="button" data-auth-tab="login" role="tab" aria-selected="${tab === 'login'}">Entrar</button><button class="auth-tab ${tab === 'register' ? 'active' : ''}" type="button" data-auth-tab="register" role="tab" aria-selected="${tab === 'register'}">Criar conta</button></div>
+-      <div id="authBody">${tab === 'login' ? loginFormHtml() : registerFormHtml()}</div>`;
+-    openModal('Conta BitLoja', body);
++    state.modalReturnFocus = null;
++    if (restoreFocus && returnFocus?.isConnected) returnFocus.focus();
++  }
++
++  function openAuth(tab = 'login', role = 'buyer') {
++    state.authRole = role === 'seller' ? 'seller' : 'buyer';
++    const body = `<div class="auth-layout">
++      <aside class="auth-visual" aria-label="Acesso à BitLoja">
++        <a class="auth-brand" href="/" data-action="auth-home" aria-label="BitLoja — início"><span class="brand-mark" aria-hidden="true"><i class="bi bi-box-seam"></i></span><span>BitLoja</span></a>
++        <div class="auth-visual-copy"><p class="auth-kicker">ACESSO AO MARKETPLACE</p><h2>Sua conta.<br>Seus pedidos.</h2><p>${tab === 'register' ? 'Compre, acompanhe suas entregas ou abra sua loja.' : 'Acompanhe pagamentos, mensagens e entregas.'}</p></div>
++        <img class="auth-art" src="/static/assets/bitcoin-bag.webp" alt="" aria-hidden="true">
++        <button class="auth-back" type="button" data-action="close-modal"><i class="bi bi-arrow-left" aria-hidden="true"></i> Voltar à loja</button>
++      </aside>
++      <div class="auth-content">
++        <div class="auth-tabs" role="tablist" aria-label="Acesso à conta">
++          <button id="authLoginTab" class="auth-tab ${tab === 'login' ? 'active' : ''}" type="button" data-auth-tab="login" role="tab" aria-controls="authBody" aria-selected="${tab === 'login'}" tabindex="${tab === 'login' ? '0' : '-1'}">Entrar</button>
++          <button id="authRegisterTab" class="auth-tab ${tab === 'register' ? 'active' : ''}" type="button" data-auth-tab="register" role="tab" aria-controls="authBody" aria-selected="${tab === 'register'}" tabindex="${tab === 'register' ? '0' : '-1'}">Criar conta</button>
++        </div>
++        <div id="authBody" class="auth-body" role="tabpanel" aria-labelledby="${tab === 'login' ? 'authLoginTab' : 'authRegisterTab'}">${tab === 'login' ? loginFormHtml() : registerFormHtml(state.authRole)}</div>
++      </div>
++    </div>`;
++    openModal('Conta BitLoja', body, true);
++    $('.modal-wrap', $('#modalRoot')).classList.add('auth-wrap');
++    $('.modal', $('#modalRoot')).classList.add('auth-modal');
++    $(tab === 'login' ? '#loginEmail' : '#registerName')?.focus();
+   }
+ 
+   function loginFormHtml() {
+-    return `<form id="loginForm"><div class="field"><label for="loginEmail">E-mail</label><input class="input" id="loginEmail" name="email" type="email" autocomplete="username" required></div><div class="field"><label for="loginPassword">Senha</label><input class="input" id="loginPassword" name="password" type="password" autocomplete="current-password" required></div><button class="btn btn-primary" type="submit">Entrar</button></form>`;
++    return `<div class="auth-form-heading"><p class="auth-form-kicker">BEM-VINDO DE VOLTA</p><h2>Entre na BitLoja</h2><p>Acesse seus pedidos e acompanhe cada etapa.</p></div><form class="auth-form" id="loginForm"><div class="field"><label for="loginEmail">E-mail</label><input class="input" id="loginEmail" name="email" type="email" inputmode="email" autocomplete="username" autocapitalize="none" spellcheck="false" required></div><div class="field"><label for="loginPassword">Senha</label><div class="auth-password-field"><input class="input" id="loginPassword" name="password" type="password" autocomplete="current-password" required><button class="auth-password-toggle" type="button" data-action="toggle-password" data-password-target="loginPassword" aria-controls="loginPassword" aria-pressed="false">Mostrar</button></div></div><p class="auth-feedback" id="authFeedback" role="status" aria-live="polite"></p><button class="button button-primary auth-submit" type="submit" data-idle-label="Entrar" data-pending-label="Entrando…">Entrar</button></form>`;
+   }
+ 
+   function registerFormHtml(role = 'buyer') {
+-    return `<form id="registerForm"><div class="field"><label for="registerName">Nome</label><input class="input" id="registerName" name="name" autocomplete="name" required></div><div class="field"><label for="registerEmail">E-mail</label><input class="input" id="registerEmail" name="email" type="email" autocomplete="email" required></div><div class="field"><label for="registerPassword">Senha</label><input class="input" id="registerPassword" name="password" type="password" autocomplete="new-password" minlength="8" required></div><div class="field"><label for="registerRole">Tipo de conta</label><select class="input" id="registerRole" name="role"><option value="buyer" ${role === 'buyer' ? 'selected' : ''}>Comprador</option><option value="seller" ${role === 'seller' ? 'selected' : ''}>Vendedor</option></select></div><button class="btn btn-primary" type="submit">Criar conta</button></form>`;
++    return `<div class="auth-form-heading"><p class="auth-form-kicker">NOVA CONTA</p><h2>Crie sua conta</h2><p>Escolha perfil comprador ou vendedor. Seu acesso segue o perfil cadastrado.</p></div><form class="auth-form" id="registerForm"><div class="field"><label for="registerName">Nome</label><input class="input" id="registerName" name="name" autocomplete="name" required></div><div class="field"><label for="registerEmail">E-mail</label><input class="input" id="registerEmail" name="email" type="email" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false" required></div><div class="field"><label for="registerPassword">Senha</label><div class="auth-password-field"><input class="input" id="registerPassword" name="password" type="password" autocomplete="new-password" minlength="8" required><button class="auth-password-toggle" type="button" data-action="toggle-password" data-password-target="registerPassword" aria-controls="registerPassword" aria-pressed="false">Mostrar</button></div><small class="auth-help">Use pelo menos 8 caracteres.</small></div><div class="field"><label for="registerRole">Tipo de conta</label><select class="input" id="registerRole" name="role"><option value="buyer" ${role === 'buyer' ? 'selected' : ''}>Comprador</option><option value="seller" ${role === 'seller' ? 'selected' : ''}>Vendedor</option></select></div><p class="auth-feedback" id="authFeedback" role="status" aria-live="polite"></p><button class="button button-primary auth-submit" type="submit" data-idle-label="Criar conta" data-pending-label="Criando…">Criar conta</button></form>`;
++  }
++
++  function setAuthFeedback(form, message = '', isError = false) {
++    const feedback = $('#authFeedback', form);
++    if (!feedback) return;
++    feedback.textContent = String(message || '');
++    feedback.classList.toggle('error', isError && Boolean(message));
++  }
++
++  function setAuthPending(form, pending) {
++    form.setAttribute('aria-busy', String(pending));
++    $$('input, select, button', form).forEach(control => { control.disabled = pending; });
++    $$('#modalRoot [data-auth-tab]').forEach(tab => { tab.disabled = pending; });
++    const submit = $('button[type="submit"]', form);
++    if (submit) submit.textContent = pending ? submit.dataset.pendingLabel : submit.dataset.idleLabel;
++  }
++
++  function isVisibleFocusTarget(element) {
++    return element instanceof HTMLElement && element.isConnected && !element.closest('.hidden, [hidden]');
++  }
++
++  function captureFocusTarget() {
++    const active = document.activeElement;
++    return active instanceof HTMLElement && active !== document.body && isVisibleFocusTarget(active) ? active : null;
++  }
++
++  function focusIfVisible(element) {
++    if (!isVisibleFocusTarget(element)) return false;
++    if (!element.matches('a[href], button, input, select, textarea, [tabindex]')) element.tabIndex = -1;
++    element.focus({ preventScroll: true });
++    return true;
++  }
++
++  function restoreFocusTarget(previousFocus, fallback) {
++    if (focusIfVisible(previousFocus)) return;
++    focusIfVisible(fallback);
++  }
++
++  function focusViewDestination(view, previousFocus = null) {
++    restoreFocusTarget(previousFocus, $(`#${view}Content`) || $(`#${view}View`));
++  }
++
++  function focusUpdatedContent(root, previousFocus) {
++    const fallback = root?.querySelector('[data-dashboard-title], h1, h2, .notice, .empty') || root;
++    restoreFocusTarget(previousFocus, fallback);
++  }
++
++  function focusDashboardTab(role, tab, previousFocus) {
++    const tabSelector = role === 'seller' ? 'data-seller-tab' : 'data-admin-tab';
++    const dashboardView = $(`#${role}View`);
++    if (!dashboardView) {
++      restoreFocusTarget(previousFocus, null);
++      return;
++    }
++    const visibleInRole = element => element instanceof HTMLElement
++      && dashboardView.contains(element)
++      && isVisibleFocusTarget(element)
++      && element.getClientRects().length > 0;
++    const candidates = $$(`.dashboard-nav-link[${tabSelector}="${CSS.escape(tab)}"]`, dashboardView);
++    const fallback = [
++      ...candidates,
++      $(`#${role}Content [data-dashboard-title]`, dashboardView),
++      $(`#${role}Content`, dashboardView)
++    ].find(visibleInRole);
++    restoreFocusTarget(visibleInRole(previousFocus) ? previousFocus : null, fallback);
+   }
+ 
+   async function doLogin(event) {
+     event.preventDefault();
+-    try {
+-      const data = await api('/api/login', { method: 'POST', body: JSON.stringify(Object.fromEntries(new FormData(event.currentTarget))) });
++    const form = event.currentTarget;
++    const payload = JSON.stringify(Object.fromEntries(new FormData(form)));
++    setAuthFeedback(form);
++    setAuthPending(form, true);
++    try {
++      const data = await api('/api/login', { method: 'POST', body: payload });
+       state.user = data.user || null;
+       state.csrf = data.csrf_token || state.csrf;
+-      closeModal();
++      closeModal({ restoreFocus: false });
+       renderSession();
+       toast(data.message || 'Sessão iniciada.');
+-      showView(state.user?.role === 'admin' ? 'admin' : state.user?.role === 'seller' ? 'seller' : 'account');
+-    } catch (error) { toast(error.message, 'error'); }
++      const nextView = state.user?.role === 'admin' ? 'admin' : state.user?.role === 'seller' ? 'seller' : 'account';
++      showView(nextView);
++      focusViewDestination(nextView);
++    } catch (error) {
++      setAuthFeedback(form, error.message, true);
++    } finally {
++      if (form.isConnected) setAuthPending(form, false);
++    }
+   }
+ 
+   async function doRegister(event) {
+     event.preventDefault();
+-    try {
+-      const data = await api('/api/register', { method: 'POST', body: JSON.stringify(Object.fromEntries(new FormData(event.currentTarget))) });
++    const form = event.currentTarget;
++    const payload = JSON.stringify(Object.fromEntries(new FormData(form)));
++    setAuthFeedback(form);
++    setAuthPending(form, true);
++    try {
++      const data = await api('/api/register', { method: 'POST', body: payload });
+       state.user = data.user || null;
+       state.csrf = data.csrf_token || state.csrf;
+-      closeModal();
++      closeModal({ restoreFocus: false });
+       renderSession();
+       toast(data.message || 'Conta criada.');
+-      showView(state.user?.role === 'seller' ? 'seller' : 'account');
+-    } catch (error) { toast(error.message, 'error'); }
++      const nextView = state.user?.role === 'seller' ? 'seller' : 'account';
++      showView(nextView);
++      focusViewDestination(nextView);
++    } catch (error) {
++      setAuthFeedback(form, error.message, true);
++    } finally {
++      if (form.isConnected) setAuthPending(form, false);
++    }
+   }
+ 
+   async function logout() {
+@@ -387,9 +580,10 @@
+       state.cartCount = 0;
+       state.unreadCount = 0;
+       state.csrf = data.csrf_token || state.csrf;
+-      closeModal();
++      closeModal({ restoreFocus: false });
+       renderSession();
+       showView('home');
++      focusViewDestination('home');
+       toast(data.message || 'Sessão encerrada.');
+     } catch (error) { toast(error.message, 'error'); }
+   }
+@@ -408,9 +602,7 @@
+ 
+   function sellAction() {
+     if (!state.user) {
+-      openAuth('register');
+-      const select = $('#registerRole');
+-      if (select) select.value = 'seller';
++      openAuth('register', 'seller');
+       return;
+     }
+     if (state.user.role === 'seller') { showView('seller'); return; }
+@@ -429,8 +621,13 @@
+       const store = data.store || {};
+       const reviewItems = Array.isArray(data.reviews) ? data.reviews : [];
+       const similar = Array.isArray(data.related) ? data.related : [];
++      const image = productImage(p);
++      const fallback = productImage({ ...p, image_url: '' });
++      const imageMarkup = image
++        ? `<img class="product-image" data-image-context="detail" data-image-label="${esc(p.name)}" src="${esc(image)}"${fallback && fallback !== image ? ` data-fallback="${esc(fallback)}"` : ''} alt="${esc(p.name)}">`
++        : `<div class="product-image-empty" role="img" aria-label="Imagem não cadastrada para ${esc(p.name)}"><i class="bi bi-image" aria-hidden="true"></i><span>Imagem não cadastrada</span></div>`;
+       root.innerHTML = `<div class="crumbs"><button class="nav-link" type="button" data-view="home">Início</button><i class="bi bi-chevron-right" aria-hidden="true"></i><button class="nav-link" type="button" data-view="catalog">Produtos</button><i class="bi bi-chevron-right" aria-hidden="true"></i><span>${esc(p.category)}</span></div>
+-        <div class="product-detail-grid"><div class="product-detail-visual"><img src="${esc(productImage(p))}" data-fallback="${esc(productImage({ id: p.id, name: p.name, category: p.category }))}" alt="${esc(p.name)}"></div>
++        <div class="product-detail-grid"><div class="product-detail-visual">${imageMarkup}</div>
+         <div class="product-buy-box"><p class="product-store">${esc(store.name || p.store_name || 'Loja')}</p><h1>${esc(p.name)}</h1><div class="detail-rating">${num(p.review_count) ? `${stars(p.rating)} ${num(p.rating).toFixed(1)} · ${idOf(p.review_count)} avaliações` : 'Sem avaliações registradas'}</div><p class="lead">${esc(p.short_description || p.description || '')}</p>${num(p.compare_at_sats) > num(p.price_sats) ? `<p class="old-price">Preço anterior: ₿ ${esc(p.compare_at_btc)}</p>` : ''}<strong class="big-price">₿ ${esc(p.price_btc)}</strong><p class="product-stock">${num(p.stock) > 0 ? `${num(p.stock)} unidades disponíveis` : 'Indisponível'}</p><div class="quantity-row"><label class="sr-only" for="productQty">Quantidade</label><input class="input" id="productQty" type="number" min="1" max="${Math.max(1, num(p.stock))}" value="1"><button class="btn btn-primary" type="button" data-action="add-current-product" data-id="${idOf(p.id)}" ${num(p.stock) < 1 ? 'disabled' : ''}><i class="bi bi-bag-plus" aria-hidden="true"></i> Adicionar ao carrinho</button></div><div class="seller-box"><span><small>Vendido por</small><strong>${esc(store.name || p.store_name || 'Loja')}</strong></span><button class="btn btn-secondary btn-sm" type="button" data-action="open-store" data-id="${idOf(store.id || p.store_id)}">Ver loja</button></div></div></div>
+         <div class="detail-lower"><section class="panel"><h2>Descrição</h2><p class="preserve-lines">${esc(p.description || p.short_description || 'Sem descrição cadastrada.')}</p></section><section class="panel"><h2>Loja</h2><p>${esc(store.description || 'Sem descrição cadastrada.')}</p><div class="store-details">${num(store.review_count) ? `${stars(store.rating)} ${num(store.rating).toFixed(1)} · ${idOf(store.review_count)} avaliações` : 'Sem avaliações registradas'}${store.tier ? ` · ${esc(store.tier)}` : ''}</div></section></div>
+         <section class="section"><div class="section-heading"><div><p class="eyebrow"><span class="eyebrow-rule" aria-hidden="true"></span> Compras concluídas</p><h2>Avaliações</h2></div></div>${reviewItems.length ? reviewItems.map(reviewCard).join('') : '<div class="empty">Este produto ainda não possui avaliações.</div>'}</section>
+@@ -490,17 +687,24 @@
+     }
+     const grouped = groupCartItems(items);
+     lines.innerHTML = Array.from(grouped.entries()).map(([storeName, group]) => `<section class="cart-store-group"><header class="cart-store-heading"><i class="bi bi-shop" aria-hidden="true"></i><h2>${esc(storeName)}</h2><span>${group.length} ${group.length === 1 ? 'item' : 'itens'}</span></header>${group.map(item => {
+-      const fallback = productImage(item);
+-      return `<article class="cart-item"><img class="cart-thumb" src="${esc(fallback)}" data-fallback="${esc(fallback)}" alt="${esc(item.name)}" loading="lazy"><div class="cart-item-info"><strong>${esc(item.name)}</strong><small>${esc(item.store_name || '')}</small><span>₿ ${esc(item.price_btc || item.unit_price_btc || '')} cada</span></div><div class="qty-control"><button type="button" data-action="cart-qty" data-id="${idOf(item.id)}" data-delta="-1" aria-label="Diminuir quantidade de ${esc(item.name)}">−</button><label class="sr-only" for="cartQty${idOf(item.id)}">Quantidade de ${esc(item.name)}</label><input id="cartQty${idOf(item.id)}" type="number" min="0" max="${Math.max(0, num(item.stock))}" value="${idOf(item.quantity)}" data-cart-qty="${idOf(item.id)}"><button type="button" data-action="cart-qty" data-id="${idOf(item.id)}" data-delta="1" aria-label="Aumentar quantidade de ${esc(item.name)}">+</button></div><strong class="cart-item-price">₿ ${esc(item.line_total_btc)}</strong><button class="remove-item" type="button" data-action="cart-remove" data-id="${idOf(item.id)}" aria-label="Remover ${esc(item.name)}"><i class="bi bi-trash3" aria-hidden="true"></i></button></article>`;
++      const image = productImage(item);
++      const fallback = productImage({ ...item, image_url: '' });
++      const imageMarkup = image
++        ? `<span class="cart-thumb"><img data-image-context="cart" data-image-label="${esc(item.name)}" src="${esc(image)}"${fallback && fallback !== image ? ` data-fallback="${esc(fallback)}"` : ''} alt="${esc(item.name)}" loading="lazy"></span>`
++        : `<span class="cart-thumb cart-thumb-empty" role="img" aria-label="Imagem não cadastrada para ${esc(item.name)}"><i class="bi bi-image" aria-hidden="true"></i></span>`;
++      return `<article class="cart-item">${imageMarkup}<div class="cart-item-info"><strong>${esc(item.name)}</strong><span>₿ ${esc(item.price_btc || item.unit_price_btc || '')} cada</span></div><div class="cart-line-total"><small>Total do item</small><strong class="cart-item-price">₿ ${esc(item.line_total_btc)}</strong></div><div class="qty-control"><button type="button" data-action="cart-qty" data-id="${idOf(item.id)}" data-delta="-1" aria-label="Diminuir quantidade de ${esc(item.name)}">−</button><label class="sr-only" for="cartQty${idOf(item.id)}">Quantidade de ${esc(item.name)}</label><input id="cartQty${idOf(item.id)}" type="number" min="0" max="${Math.max(0, num(item.stock))}" value="${idOf(item.quantity)}" data-cart-qty="${idOf(item.id)}"><button type="button" data-action="cart-qty" data-id="${idOf(item.id)}" data-delta="1" aria-label="Aumentar quantidade de ${esc(item.name)}">+</button></div><button class="remove-item" type="button" data-action="cart-remove" data-id="${idOf(item.id)}" aria-label="Remover ${esc(item.name)}"><i class="bi bi-trash3" aria-hidden="true"></i></button></article>`;
+     }).join('')}</section>`).join('');
+     summary.innerHTML = `<div class="cart-summary-inner"><p class="summary-label">Resumo do carrinho</p><div class="summary-row"><span>Itens</span><strong>${state.cartCount}</strong></div><div class="summary-total"><span>Total</span><strong>₿ ${esc(data.total_btc)}</strong></div><p>O checkout cria um pedido separado para cada loja.</p><button class="btn btn-primary" type="button" data-action="checkout"><i class="bi bi-lock" aria-hidden="true"></i> Continuar para checkout</button><small>Preço e estoque são confirmados pelo servidor ao finalizar.</small></div>`;
+   }
+ 
+   async function loadCart() {
+     if (!state.user) { openAuth('login'); showView('home'); return; }
+-    setLoading($('#cartLines'), 'Carregando carrinho');
++    const root = $('#cartLines');
++    const previousFocus = captureFocusTarget();
++    setLoading(root, 'Carregando carrinho');
+     try { renderCart(await api('/api/cart')); }
+-    catch (error) { $('#cartLines').innerHTML = `<div class="notice notice-danger">${esc(error.message)}</div>`; }
++    catch (error) { if (root) root.innerHTML = `<div class="notice notice-danger">${esc(error.message)}</div>`; }
++    finally { focusUpdatedContent(root, previousFocus); }
+   }
+ 
+   async function updateCart(productId, quantity) {
+@@ -538,6 +742,7 @@
+   async function loadAccount() {
+     if (!state.user) { openAuth('login'); showView('home'); return; }
+     const root = $('#accountContent');
++    const previousFocus = captureFocusTarget();
+     setLoading(root, 'Carregando pedidos');
+     try {
+       const data = await api('/api/orders/my');
+@@ -547,10 +752,12 @@
+       const progress = orders.filter(order => ['paid', 'processing', 'shipped'].includes(order.status)).length;
+       root.innerHTML = `<div class="metrics"><article class="metric-card"><small>Pedidos</small><strong>${orders.length}</strong></article><article class="metric-card"><small>Pagos</small><strong>${paid}</strong></article><article class="metric-card"><small>Concluídos</small><strong>${completed}</strong></article><article class="metric-card"><small>Em andamento</small><strong>${progress}</strong></article></div><section class="panel section"><div class="section-heading"><div><p class="eyebrow"><span class="eyebrow-rule" aria-hidden="true"></span> Histórico</p><h2>Seus pedidos</h2></div></div>${orderTable(orders)}</section>`;
+     } catch (error) { root.innerHTML = `<div class="notice notice-danger">${esc(error.message)}</div>`; }
++    finally { focusUpdatedContent(root, previousFocus); }
+   }
+ 
+   async function loadReviews() {
+     const root = $('#reviewsList');
++    const previousFocus = captureFocusTarget();
+     setLoading(root, 'Buscando avaliações publicadas');
+     try {
+       const products = state.products.length ? state.products : (await api('/api/products')).products || [];
+@@ -560,6 +767,7 @@
+       reviews.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+       root.innerHTML = reviews.length ? reviews.map(reviewCard).join('') : '<div class="empty">Nenhuma avaliação de produto publicada.</div>';
+     } catch (error) { root.innerHTML = `<div class="notice notice-danger">${esc(error.message)}</div>`; }
++    finally { focusUpdatedContent(root, previousFocus); }
+   }
+ 
+   async function openOrder(id) {
+@@ -606,6 +814,8 @@
+     try {
+       const data = await api(`/api/orders/${orderId}/tracking`, { method: 'POST', body: JSON.stringify(Object.fromEntries(new FormData(form))) });
+       toast(data.message || 'Rastreio atualizado.');
++      const refreshView = { seller: loadSeller, admin: loadAdmin, account: loadAccount }[state.activeView];
++      if (refreshView) await refreshView();
+       await openOrder(orderId);
+     } catch (error) { toast(error.message, 'error'); }
+   }
+@@ -640,33 +850,81 @@
+   async function loadSeller() {
+     if (state.user?.role !== 'seller') { showView('home'); return; }
+     const root = $('#sellerContent');
++    const previousFocus = captureFocusTarget();
+     setLoading(root, 'Carregando painel da loja');
+     try {
+       state.seller = await api('/api/seller/dashboard');
+       renderSeller();
+     } catch (error) { root.innerHTML = `<div class="notice notice-danger">${esc(error.message)}</div>`; }
+-  }
+-
+-  function sellerBanner(store, title, subtitle, art = 'seller-parcel.webp') {
+-    return `<header class="dash-hero"><div><p class="eyebrow"><span class="eyebrow-rule" aria-hidden="true"></span> Painel do vendedor</p><h1>${esc(title)}</h1><p>${esc(subtitle)}</p></div><img class="dash-hero-art" src="/static/assets/${art}" alt="" aria-hidden="true"></header>`;
++    finally { focusUpdatedContent(root, previousFocus); }
++  }
++
++  function metricText(value) {
++    return value === null || value === undefined || value === '' ? '—' : String(value);
++  }
++
++  function dashMetric(label, value, bitcoin = false) {
++    const text = value === null || value === undefined || value === '' ? '—' : `${bitcoin ? '₿ ' : ''}${esc(value)}`;
++    return `<article class="dash-hero-metric"><small>${esc(label)}</small><strong>${text}</strong></article>`;
++  }
++
++  function sellerBanner(store, tab, metrics, products) {
++    const sectionName = { overview: 'Visão geral', products: 'Produtos', orders: 'Pedidos', store: 'Minha loja' }[tab] || 'Painel';
++    const tabKey = ['overview', 'products', 'orders', 'store'].includes(tab) ? tab : 'overview';
++    const metricStrip = store ? `<div class="dash-hero-metrics">${dashMetric('Score da loja', store.score)}${dashMetric('Produtos ativos', metrics.products ?? products.length)}${dashMetric('Vendas (BTC)', metrics.sales_btc, true)}${dashMetric('A receber (BTC)', metrics.pending_btc, true)}</div>` : '<div class="dash-hero-metrics dash-hero-empty">Cadastre os dados da loja para começar a acompanhar pedidos e estoque.</div>';
++    const subline = store ? 'Pedidos, produtos e repasses em um só lugar.' : 'Cadastre sua loja para publicar produtos.';
++    const heading = tabKey === 'overview' ? 'SUA LOJA. <span>SUAS REGRAS.</span>' : `<span>${esc(sectionName)}</span>`;
++    const titleLabel = tabKey === 'overview' ? 'SUA LOJA. / SUAS REGRAS.' : sectionName;
++    return `<header class="dash-hero seller-dash-hero seller-tab-${tabKey}"><div class="dash-hero-copy"><p class="eyebrow"><span class="eyebrow-rule" aria-hidden="true"></span> Painel do vendedor · ${esc(sectionName)}</p><h1 tabindex="-1" data-dashboard-title aria-label="${esc(titleLabel)}">${heading}</h1><p>${subline}</p></div><img class="dash-hero-art" src="/static/assets/seller-parcel.webp" alt="" aria-hidden="true"><img class="dash-hero-product dash-hero-keyboard" src="/static/assets/products/keyboard.webp" alt="" aria-hidden="true"><img class="dash-hero-product dash-hero-watch" src="/static/assets/products/watch.webp" alt="" aria-hidden="true">${metricStrip}</header>`;
++  }
++
++  function sellerStockPanel(products) {
++    const stockItems = products.filter(product => product.active !== false).slice().sort((first, second) => num(first.stock) - num(second.stock)).slice(0, 4);
++    const rows = stockItems.length ? stockItems.map(product => {
++      const fallback = productImage({ ...product, image_url: '' });
++      const source = productImage(product);
++      const thumb = source
++        ? `<img data-image-context="stock" src="${esc(source)}"${fallback && fallback !== source ? ` data-fallback="${esc(fallback)}"` : ''} alt="" loading="lazy">`
++        : '<i class="bi bi-box-seam" aria-hidden="true"></i>';
++      return `<button class="stock-row" type="button" data-action="edit-product" data-id="${idOf(product.id)}"><span class="stock-thumb ${source ? '' : 'stock-thumb-empty'}">${thumb}</span><span class="stock-copy"><strong>${esc(product.name)}</strong><small>${esc(product.category || 'Produto')}</small></span><span class="stock-quantity"><strong>${idOf(product.stock)}</strong><small>un.</small></span></button>`;
++    }).join('') : '<div class="empty">Nenhum produto ativo no estoque.</div>';
++    return `<section class="panel stock-panel"><div class="section-heading"><div><p class="eyebrow">INVENTÁRIO</p><h2>Menor estoque</h2></div><button class="btn btn-secondary btn-sm" type="button" data-seller-tab="products">Ver produtos</button></div><div class="stock-list">${rows}</div></section>`;
++  }
++
++  function sellerDisputesPanel(disputes) {
++    const open = disputes.filter(dispute => dispute.status !== 'resolved');
++    return `<section class="panel"><div class="section-heading"><div><p class="eyebrow">ATENDIMENTO</p><h2>Disputas em aberto</h2></div><button class="btn btn-secondary btn-sm" type="button" data-seller-tab="orders">Ver pedidos</button></div>${open.length ? disputesTable(open.slice(0, 3), false) : '<div class="empty">Nenhuma disputa em aberto.</div>'}</section>`;
++  }
++
++  function sellerActionCards() {
++    return `<div class="dashboard-action-cards" aria-label="Atalhos da loja"><button class="dashboard-action-card" type="button" data-seller-tab="products"><i class="bi bi-plus-square" aria-hidden="true"></i><span><strong>Adicionar produto</strong><small>Cadastro e estoque</small></span><i class="bi bi-arrow-up-right" aria-hidden="true"></i></button><button class="dashboard-action-card" type="button" data-seller-tab="orders"><i class="bi bi-receipt" aria-hidden="true"></i><span><strong>Acompanhar pedidos</strong><small>Pagamento e entrega</small></span><i class="bi bi-arrow-up-right" aria-hidden="true"></i></button><button class="dashboard-action-card" type="button" data-seller-tab="store"><i class="bi bi-shop" aria-hidden="true"></i><span><strong>Editar minha loja</strong><small>Dados e repasse</small></span><i class="bi bi-arrow-up-right" aria-hidden="true"></i></button></div>`;
+   }
+ 
+   function renderSeller() {
+     const data = state.seller || {};
+     const store = data.store || null;
+     const metrics = data.metrics || {};
+-    $$('.dashboard-nav-link[data-seller-tab]').forEach(button => button.classList.toggle('active', button.dataset.sellerTab === state.sellerTab));
+-    const banner = sellerBanner(store, state.sellerTab === 'overview' ? (store?.name || 'Sua loja') : ({ products: 'Produtos', orders: 'Pedidos', store: 'Configurações da loja' }[state.sellerTab] || 'Painel'), store ? 'Pedidos, produtos e repasses em um só lugar.' : 'Cadastre sua loja para publicar produtos.');
+-    const metricCards = store ? `<div class="metrics"><article class="metric-card"><small>Score operacional</small><strong>${esc(store.score)}</strong><span>${esc(store.tier || '—')}</span></article><article class="metric-card"><small>Produtos</small><strong>${esc(metrics.products ?? (data.products || []).length)}</strong></article><article class="metric-card"><small>Vendas</small><strong>₿ ${esc(metrics.sales_btc || '0.00000000')}</strong></article><article class="metric-card"><small>A receber</small><strong>₿ ${esc(metrics.pending_btc || '0.00000000')}</strong></article></div>` : '<div class="empty">Crie sua loja para começar.</div>';
++    const products = data.products || [];
++    const orders = data.orders || [];
++    const disputes = data.disputes || [];
++    $$('.dashboard-nav-link[data-seller-tab]').forEach(button => {
++      const active = button.dataset.sellerTab === state.sellerTab;
++      button.classList.toggle('active', active);
++      if (active) button.setAttribute('aria-current', 'page');
++      else button.removeAttribute('aria-current');
++    });
++    const banner = sellerBanner(store, state.sellerTab, metrics, products);
+     let content = '';
+     if (state.sellerTab === 'overview') {
+-      content = `${banner}${metricCards}${store ? `<div class="notice notice-info">Regra de repasse: <strong>${esc(store.payout_rule || '—')}</strong>. Disputas abertas bloqueiam o pedido.</div><div class="panel section"><div class="section-heading"><div><p class="eyebrow"><span class="eyebrow-rule" aria-hidden="true"></span> Atividade</p><h2>Pedidos recentes</h2></div><button class="btn btn-secondary btn-sm" type="button" data-seller-tab="orders">Ver todos</button></div>${orderTable((data.orders || []).slice(0, 5), true)}</div>` : `<div class="panel section"><h2>Cadastre sua loja</h2>${storeFormHtml(null)}</div>`}`;
++      content = store
++        ? `${banner}<div class="notice notice-info payout-note"><span>Regra de repasse</span><strong>${esc(metricText(store.payout_rule))}</strong></div><div class="seller-overview-grid"><div class="dashboard-panel-stack"><section class="panel"><div class="section-heading"><div><p class="eyebrow">ATIVIDADE</p><h2>Pedidos recentes</h2></div><button class="btn btn-secondary btn-sm" type="button" data-seller-tab="orders">Ver todos</button></div>${orderTable(orders.slice(0, 5), true)}</section>${sellerActionCards()}</div><div class="dashboard-panel-stack">${sellerStockPanel(products)}${sellerDisputesPanel(disputes)}</div></div>`
++        : `${banner}<section class="panel section"><div class="section-heading"><div><p class="eyebrow">PRIMEIRO PASSO</p><h2>Cadastre sua loja</h2></div></div><p>Informe nome, dados de contato e destino de repasse para começar.</p>${storeFormHtml(null)}</section>`;
+     } else if (state.sellerTab === 'products') {
+-      content = `${banner}<div class="grid-2 seller-forms"><section class="panel"><h2 id="productFormTitle">Novo produto</h2>${productFormHtml()}</section><section class="panel"><h2>Produtos cadastrados</h2>${sellerProductsTable(data.products || [])}</section></div>`;
++      content = `${banner}<div class="grid-2 seller-forms"><section class="panel"><h2 id="productFormTitle">Novo produto</h2>${productFormHtml()}</section><section class="panel"><h2>Produtos cadastrados</h2>${sellerProductsTable(products)}</section></div>`;
+     } else if (state.sellerTab === 'orders') {
+-      content = `${banner}<section class="panel section"><div class="section-heading"><div><p class="eyebrow"><span class="eyebrow-rule" aria-hidden="true"></span> Operação</p><h2>Pedidos da loja</h2></div></div>${orderTable(data.orders || [], true)}</section><section class="panel section"><h2>Disputas</h2>${disputesTable(data.disputes || [], false)}</section>`;
++      content = `${banner}<section class="panel section"><div class="section-heading"><div><p class="eyebrow">OPERAÇÃO</p><h2>Pedidos da loja</h2></div></div>${orderTable(orders, true)}</section><section class="panel section"><div class="section-heading"><div><p class="eyebrow">ATENDIMENTO</p><h2>Disputas</h2></div></div>${disputesTable(disputes, false)}</section>`;
+     } else {
+-      content = `${banner}<section class="panel section"><h2>${store ? 'Dados da loja' : 'Criar loja'}</h2>${storeFormHtml(store)}</section>`;
++      content = `${banner}<section class="panel section"><div class="section-heading"><div><p class="eyebrow">IDENTIDADE E REPASSE</p><h2>${store ? 'Dados da loja' : 'Criar loja'}</h2></div></div>${storeFormHtml(store)}</section>`;
+     }
+     $('#sellerContent').innerHTML = content;
+   }
+@@ -681,12 +939,12 @@
+ 
+   function sellerProductsTable(products) {
+     if (!products.length) return '<div class="empty">Nenhum produto cadastrado.</div>';
+-    return `<div class="table-wrap"><table><thead><tr><th>Produto</th><th>Preço</th><th>Estoque</th><th>Status</th><th>Ações</th></tr></thead><tbody>${products.map(product => `<tr><td><strong>${esc(product.name)}</strong><br><small>${esc(product.category)}</small></td><td>₿ ${esc(product.price_btc)}</td><td>${idOf(product.stock)}</td><td>${statusTag(product.active ? 'paid' : 'cancelled')}</td><td><div class="actions"><button class="btn btn-secondary btn-sm" type="button" data-action="edit-product" data-id="${idOf(product.id)}">Editar</button>${product.active ? `<button class="btn btn-danger btn-sm" type="button" data-action="disable-product" data-id="${idOf(product.id)}">Desativar</button>` : ''}</div></td></tr>`).join('')}</tbody></table></div>`;
++    return `<div class="table-wrap"><table><thead><tr><th>Produto</th><th>Preço</th><th>Estoque</th><th>Status</th><th>Ações</th></tr></thead><tbody>${products.map(product => `<tr><td><strong>${esc(product.name)}</strong><br><small>${esc(product.category)}</small></td><td>₿ ${esc(product.price_btc)}</td><td>${idOf(product.stock)}</td><td><span class="status ${product.active ? 'active' : 'cancelled'}">${product.active ? 'Ativo' : 'Desativado'}</span></td><td><div class="actions"><button class="btn btn-secondary btn-sm" type="button" data-action="edit-product" data-id="${idOf(product.id)}">Editar</button>${product.active ? `<button class="btn btn-danger btn-sm" type="button" data-action="disable-product" data-id="${idOf(product.id)}">Desativar</button>` : ''}</div></td></tr>`).join('')}</tbody></table></div>`;
+   }
+ 
+   function disputesTable(disputes, isAdmin = true) {
+     if (!disputes?.length) return '<div class="empty">Nenhuma disputa registrada.</div>';
+-    return `<div class="table-wrap"><table><thead><tr><th>Pedido</th><th>Motivo</th><th>Loja</th><th>Status</th><th>Ações</th></tr></thead><tbody>${disputes.map(dispute => `<tr><td>${esc(dispute.order_reference)}</td><td>${esc(dispute.reason)}<br><small>${esc(dispute.opened_by_name || '')}</small></td><td>${esc(dispute.store_name || 'Minha loja')}</td><td>${statusTag(dispute.status)}</td><td><div class="actions"><button class="btn btn-secondary btn-sm" type="button" data-action="open-dispute-thread" data-id="${idOf(dispute.id)}">Conversa</button>${isAdmin && dispute.status !== 'resolved' ? `<button class="btn btn-primary btn-sm" type="button" data-action="resolve-dispute" data-id="${idOf(dispute.id)}">Resolver</button>` : ''}</div></td></tr>`).join('')}</tbody></table></div>`;
++    return `<div class="table-wrap"><table><thead><tr><th>Pedido</th><th>Motivo</th><th>Loja</th><th>Status</th><th>Ações</th></tr></thead><tbody>${disputes.map(dispute => `<tr><td>${esc(dispute.order_reference)}</td><td>${esc(dispute.reason)}<br><small>${esc(dispute.opened_by_name || '')}</small></td><td>${esc(dispute.store_name || (isAdmin ? '—' : 'Esta loja'))}</td><td>${statusTag(dispute.status)}</td><td><div class="actions"><button class="btn btn-secondary btn-sm" type="button" data-action="open-dispute-thread" data-id="${idOf(dispute.id)}">Conversa</button>${isAdmin && dispute.status !== 'resolved' ? `<button class="btn btn-primary btn-sm" type="button" data-action="resolve-dispute" data-id="${idOf(dispute.id)}">Resolver</button>` : ''}</div></td></tr>`).join('')}</tbody></table></div>`;
+   }
+ 
+   async function saveStore(event) {
+@@ -744,34 +1002,53 @@
+ 
+   async function loadAdmin() {
+     if (state.user?.role !== 'admin') { showView('home'); return; }
+-    setLoading($('#adminContent'), 'Carregando painel administrativo');
++    const root = $('#adminContent');
++    const previousFocus = captureFocusTarget();
++    setLoading(root, 'Carregando painel administrativo');
+     try {
+       state.admin = await api('/api/admin/dashboard');
+       renderAdmin();
+-    } catch (error) { $('#adminContent').innerHTML = `<div class="notice notice-danger">${esc(error.message)}</div>`; }
++    } catch (error) { if (root) root.innerHTML = `<div class="notice notice-danger">${esc(error.message)}</div>`; }
++    finally { focusUpdatedContent(root, previousFocus); }
++  }
++
++  function adminOverview(data, openDisputes) {
++    const orders = data.orders || [];
++    const batches = data.batches || [];
++    const actionCards = `<div class="dashboard-action-cards" aria-label="Atalhos administrativos"><button class="dashboard-action-card" type="button" data-admin-tab="settlements"><i class="bi bi-arrow-left-right" aria-hidden="true"></i><span><strong>Liquidações</strong><small>Revisar lotes e saldos</small></span><i class="bi bi-arrow-up-right" aria-hidden="true"></i></button><button class="dashboard-action-card" type="button" data-admin-tab="treasury"><i class="bi bi-safe2" aria-hidden="true"></i><span><strong>Tesouraria</strong><small>Destinos e reservas</small></span><i class="bi bi-arrow-up-right" aria-hidden="true"></i></button><button class="dashboard-action-card" type="button" data-admin-tab="disputes"><i class="bi bi-shield-exclamation" aria-hidden="true"></i><span><strong>Disputas</strong><small>Conversa e decisão</small></span><i class="bi bi-arrow-up-right" aria-hidden="true"></i></button><button class="dashboard-action-card" type="button" data-admin-tab="users"><i class="bi bi-people" aria-hidden="true"></i><span><strong>Usuários e lojas</strong><small>Contas e operação</small></span><i class="bi bi-arrow-up-right" aria-hidden="true"></i></button></div>`;
++    return `<div class="admin-overview-grid"><div class="dashboard-panel-stack"><section class="panel"><div class="section-heading"><div><p class="eyebrow">ATIVIDADE</p><h2>Pedidos recentes</h2></div>${config.btcMode === 'rpc' ? '<button class="btn btn-secondary btn-sm" type="button" data-action="sync-all">Sincronizar pagamentos</button>' : ''}</div>${adminOrdersTable(orders.slice(0, 5))}</section>${actionCards}</div><div class="dashboard-panel-stack"><section class="panel"><div class="section-heading"><div><p class="eyebrow">MEDIAÇÃO</p><h2>Disputas em aberto</h2></div><button class="btn btn-secondary btn-sm" type="button" data-admin-tab="disputes">Ver todas</button></div>${openDisputes.length ? disputesTable(openDisputes.slice(0, 4), true) : '<div class="empty">Nenhuma disputa em aberto.</div>'}</section><section class="panel"><div class="section-heading"><div><p class="eyebrow">LIQUIDAÇÕES</p><h2>Lotes recentes</h2></div><button class="btn btn-secondary btn-sm" type="button" data-admin-tab="settlements">Ver lotes</button></div>${batchesTable(batches.slice(0, 3))}</section></div></div>`;
+   }
+ 
+   function renderAdmin() {
+     const data = state.admin || {};
+     const metrics = data.metrics || {};
+     const wallet = data.wallet || {};
+-    $$('.dashboard-nav-link[data-admin-tab]').forEach(button => button.classList.toggle('active', button.dataset.adminTab === state.adminTab));
++    const orders = data.orders || [];
++    const disputes = data.disputes || [];
++    const openDisputes = disputes.filter(dispute => dispute.status !== 'resolved');
++    $$('.dashboard-nav-link[data-admin-tab]').forEach(button => {
++      const active = button.dataset.adminTab === state.adminTab;
++      button.classList.toggle('active', active);
++      if (active) button.setAttribute('aria-current', 'page');
++      else button.removeAttribute('aria-current');
++    });
+     const labels = { overview: 'Visão geral', settlements: 'Liquidações', treasury: 'Tesouraria', disputes: 'Disputas', users: 'Usuários e lojas', audit: 'Auditoria' };
+-    const title = labels[state.adminTab] || 'Administração';
+-    const banner = `<header class="dash-hero admin-dash-hero"><div><p class="eyebrow"><span class="eyebrow-rule" aria-hidden="true"></span> BitLoja · Administração</p><h1>${esc(title)}</h1><p>Dados operacionais carregados do servidor e da rede configurada.</p></div><img class="dash-hero-art" src="/static/assets/bitcoin-crystal.webp" alt="" aria-hidden="true"></header>`;
+-    const status = `${esc(wallet.mode || '—')} · ${esc(wallet.network || config.btcNetwork)} · ${esc(statusLabels[wallet.status] || wallet.status || '—')}`;
+-    const metricsHtml = `<div class="metrics"><article class="metric-card"><small>Recebido</small><strong>₿ ${esc(metrics.paid_btc || '0.00000000')}</strong></article><article class="metric-card"><small>Pedidos</small><strong>${esc(metrics.orders ?? (data.orders || []).length)}</strong></article><article class="metric-card"><small>Disputas abertas</small><strong>${esc(metrics.disputes ?? (data.disputes || []).length)}</strong></article><article class="metric-card"><small>UTXOs</small><strong>${esc(wallet.utxos ?? 0)}</strong></article></div>`;
+-    const actualContent = adminTabContent(data);
+-    $('#adminContent').innerHTML = `${banner}<div class="notice ${wallet.status === 'offline' ? 'notice-danger' : 'notice-info'}"><strong>Carteira:</strong> ${status}${wallet.error ? ` · ${esc(wallet.error)}` : ''}</div>${metricsHtml}<div id="adminTabContent">${actualContent}</div>`;
+-  }
+-
+-  function adminTabContent(data) {
++    const walletStatus = `${metricText(wallet.mode)} · ${metricText(wallet.network || config.btcNetwork)} · ${metricText(statusLabels[wallet.status] || wallet.status)}`;
++    const metricStrip = `<div class="dash-hero-metrics">${dashMetric('Recebido (BTC)', metrics.paid_btc, true)}${dashMetric('Pedidos', metrics.orders ?? orders.length)}${dashMetric('Disputas em aberto', metrics.disputes ?? openDisputes.length)}${dashMetric('UTXOs', wallet.utxos)}</div>`;
++    const tabKey = labels[state.adminTab] ? state.adminTab : 'overview';
++    const heading = tabKey === 'overview' ? 'CENTRO <span>DE CONTROLE</span>' : `<span>${esc(labels[tabKey])}</span>`;
++    const titleLabel = tabKey === 'overview' ? 'CENTRO / DE CONTROLE' : labels[tabKey];
++    const banner = `<header class="dash-hero admin-dash-hero admin-tab-${tabKey}"><div class="dash-hero-copy"><p class="eyebrow"><span class="eyebrow-rule" aria-hidden="true"></span> BitLoja · Administração · ${esc(labels[tabKey] || 'Painel')}</p><h1 tabindex="-1" data-dashboard-title aria-label="${esc(titleLabel)}">${heading}</h1><p>Carteira ${esc(walletStatus)}${wallet.error ? ` · ${esc(wallet.error)}` : ''}</p></div><img class="dash-hero-art" src="/static/assets/bitcoin-crystal.webp" alt="" aria-hidden="true">${metricStrip}</header>`;
++    $('#adminContent').innerHTML = `${banner}<div id="adminTabContent">${adminTabContent(data, openDisputes)}</div>`;
++  }
++
++  function adminTabContent(data, openDisputes = []) {
+     if (state.adminTab === 'settlements') return settlementsSection(data);
+     if (state.adminTab === 'treasury') return treasurySection(data);
+-    if (state.adminTab === 'disputes') return `<section class="panel section"><h2>Central de disputas</h2>${disputesTable(data.disputes || [], true)}</section>`;
++    if (state.adminTab === 'disputes') return `<section class="panel section"><div class="section-heading"><div><p class="eyebrow">MEDIAÇÃO</p><h2>Central de disputas</h2></div></div>${disputesTable(data.disputes || [], true)}</section>`;
+     if (state.adminTab === 'users') return usersSection(data);
+     if (state.adminTab === 'audit') return auditSection(data);
+-    return `<section class="panel section"><div class="section-heading"><div><p class="eyebrow"><span class="eyebrow-rule" aria-hidden="true"></span> Atividade</p><h2>Pedidos recentes</h2></div>${config.btcMode === 'rpc' ? '<button class="btn btn-secondary btn-sm" type="button" data-action="sync-all">Sincronizar pagamentos</button>' : ''}</div>${adminOrdersTable(data.orders || [])}</section><section class="panel section"><h2>Liquidações recentes</h2>${batchesTable(data.batches || [])}</section>`;
++    return adminOverview(data, openDisputes);
+   }
+ 
+   function adminOrdersTable(orders) {
+@@ -954,6 +1231,7 @@
+   async function loadCustody() {
+     if (!state.user) { openAuth('login'); return; }
+     const root = $('#custodyContent');
++    const previousFocus = captureFocusTarget();
+     setLoading(root, 'Carregando configuração Bitcoin');
+     try {
+       const cfg = await api('/api/custody/config');
+@@ -961,9 +1239,13 @@
+       let commission = null;
+       if (state.user.role === 'admin') commission = await api('/api/admin/commission');
+       const commissionPanel = commission ? commissionAdminHtml(commission) : '';
+-      root.innerHTML = `<section class="custody-banner"><div><p class="eyebrow"><span class="eyebrow-rule" aria-hidden="true"></span> Configuração atual</p><h2>Pagamentos Bitcoin</h2><p>Confira modos ativos no servidor. Chaves privadas e seeds não são recebidas pela BitLoja.</p></div><img src="/static/assets/bitcoin-crystal.webp" alt="" aria-hidden="true"></section><div class="protocol-grid section"><article class="protocol-card"><span class="protocol-step">01</span><h3>Escrow on-chain</h3><p>P2WSH 2-de-3 com chaves públicas do comprador, vendedor e mediador.</p><span class="mode-tag">${esc(cfg.custody_mode || '—')}</span></article><article class="protocol-card"><span class="protocol-step">02</span><h3>PSBT offline</h3><p>Propostas são exportadas, assinadas em carteira externa e submetidas para validação.</p><span class="mode-tag">BIP 174</span></article><article class="protocol-card"><span class="protocol-step">03</span><h3>Lightning</h3><p>O modo e a configuração exibidos refletem o serviço disponível no servidor.</p><span class="mode-tag">${esc(cfg.lightning_mode || '—')}</span></article></div><div class="grid-2 section"><section class="panel"><h2>Minha chave pública</h2><p>Cadastre chave pública Bitcoin comprimida. Não envie seed, WIF ou chave privada.</p><form id="profileKeyForm"><div class="field"><label for="profilePubkey">Chave pública</label><input class="input" id="profilePubkey" name="pubkey" value="${esc(cfg.user_pubkey || '')}" placeholder="02/03 + 64 caracteres hex"></div><button class="btn btn-primary" type="submit">Salvar chave pública</button></form></section><section class="panel"><h2>Chave pública do mediador</h2><code class="keybox">${esc(cfg.platform_pubkey || 'Não configurada')}</code><p>O backend guarda chave pública e descriptors; assinatura ocorre fora do Flask.</p></section></div>${state.user.role === 'seller' ? '<div class="notice notice-info">A chave escrow específica da loja fica em Minha loja.</div>' : ''}${commissionPanel}`;
++      const protocolCards = `<div class="protocol-grid custody-protocol-grid section"><article class="protocol-card"><span class="protocol-step">01</span><h3>Escrow on-chain</h3><p>P2WSH 2-de-3 com chaves públicas do comprador, vendedor e mediador.</p><span class="mode-tag">${esc(cfg.custody_mode || '—')}</span></article><article class="protocol-card"><span class="protocol-step">02</span><h3>PSBT offline</h3><p>Propostas são exportadas, assinadas em carteira externa e submetidas para validação.</p><span class="mode-tag">BIP 174</span></article><article class="protocol-card"><span class="protocol-step">03</span><h3>Lightning</h3><p>O modo e a configuração exibidos refletem o serviço disponível no servidor.</p><span class="mode-tag">${esc(cfg.lightning_mode || '—')}</span></article></div>`;
++      const custodyHero = `<header class="custody-hero financial-intro"><div><p class="eyebrow"><span class="eyebrow-rule" aria-hidden="true"></span> PAGAMENTOS BITCOIN</p><h1>Configuração de custódia</h1><p>Modos disponíveis neste servidor; chaves privadas e seeds ficam fora da BitLoja.</p></div><span class="mode-tag">Custódia · ${esc(cfg.custody_mode || '—')}</span></header>`;
++      const profilePanels = `<div class="grid-2 custody-settings section"><section class="panel"><h2>Minha chave pública</h2><p>Cadastre chave pública Bitcoin comprimida. Não envie seed, WIF ou chave privada.</p><form id="profileKeyForm"><div class="field"><label for="profilePubkey">Chave pública</label><input class="input" id="profilePubkey" name="pubkey" value="${esc(cfg.user_pubkey || '')}" placeholder="02/03 + 64 caracteres hex"></div><button class="btn btn-primary" type="submit">Salvar chave pública</button></form></section><section class="panel"><h2>Chave pública do mediador</h2><code class="keybox">${esc(cfg.platform_pubkey || 'Não configurada')}</code><p>O backend guarda chave pública e descriptors; assinatura ocorre fora do Flask.</p></section></div>`;
++      root.innerHTML = `${custodyHero}${protocolCards}${profilePanels}${state.user.role === 'seller' ? '<div class="notice notice-info">A chave escrow específica da loja fica em Minha loja.</div>' : ''}${commissionPanel}`;
+       $('#profileKeyForm')?.addEventListener('submit', saveProfileKey);
+     } catch (error) { root.innerHTML = `<div class="notice notice-danger">${esc(error.message)}</div>`; }
++    finally { focusUpdatedContent(root, previousFocus); }
+   }
+ 
+   async function saveProfileKey(event) {
+@@ -1029,12 +1311,15 @@
+   async function loadWallet() {
+     if (!state.user) { openAuth('login'); return; }
+     const root = $('#walletContent');
++    const previousFocus = captureFocusTarget();
+     setLoading(root, 'Consultando carteira');
+     try {
+       const data = await api('/api/wallet');
+       state.wallet = data;
+       renderWallet(data);
++      applyWalletModeGate(data.wallet || {});
+     } catch (error) { root.innerHTML = `<div class="notice notice-danger">${esc(error.message)}</div>`; }
++    finally { focusUpdatedContent(root, previousFocus); }
+   }
+ 
+   function renderWallet(data) {
+@@ -1045,7 +1330,23 @@
+     const addressPanel = `<section class="panel"><div class="section-heading"><div><h2>Recebimento</h2><p>Endereços retornados pela carteira.</p></div>${wallet.configured ? '<button class="btn btn-secondary btn-sm" type="button" data-action="wallet-new-address">Gerar endereço</button>' : ''}</div>${wallet.address ? `<code class="address">${esc(wallet.address)}</code>` : '<div class="empty">Endereço não disponível.</div>'}${addresses.length ? `<div class="address-list">${addresses.map(address => `<div><code>${esc(address.address)}</code><small>${esc(address.purpose)} · ${esc(dateText(address.created_at))}</small><button class="btn btn-secondary btn-sm" type="button" data-action="copy" data-value="${esc(address.address)}">Copiar</button></div>`).join('')}</div>` : ''}</section>`;
+     const transfersPanel = `<section class="panel"><h2>Transferências</h2>${transfers.length ? transfers.map(transfer => `<article class="psbt-row"><div class="checkout-order-head"><strong>${esc(transfer.reference)}</strong>${statusTag(transfer.status)}</div><p>₿ ${esc(transfer.amount_btc)} · taxa ₿ ${esc(transfer.fee_btc)}</p><code>${esc(transfer.destination)}</code><small>${esc(dateText(transfer.created_at))}${transfer.txid ? ` · TXID ${esc(short(transfer.txid))}` : ''}</small><div class="actions"><button class="btn btn-secondary btn-sm" type="button" data-action="wallet-download" data-id="${idOf(transfer.id)}">Baixar PSBT</button>${['draft', 'signed', 'ready_to_broadcast'].includes(transfer.status) ? `<button class="btn btn-secondary btn-sm" type="button" data-action="wallet-signed" data-id="${idOf(transfer.id)}">Enviar assinatura</button>` : ''}${transfer.status === 'ready_to_broadcast' ? `<button class="btn btn-primary btn-sm" type="button" data-action="wallet-broadcast" data-id="${idOf(transfer.id)}">Transmitir</button>` : ''}${transfer.status === 'draft' ? `<button class="btn btn-danger btn-sm" type="button" data-action="wallet-cancel" data-id="${idOf(transfer.id)}">Cancelar</button>` : ''}</div></article>`).join('') : '<div class="empty">Nenhuma transferência preparada.</div>'}</section>`;
+     const transferForm = state.user?.role === 'seller' && wallet.configured ? `<section class="panel"><h2>Preparar transferência</h2><p>Crie PSBT, assine em carteira externa, envie para validação e transmita após validação do servidor.</p><form id="walletTransferForm"><div class="field"><label for="transferDestination">Endereço de destino</label><input class="input" id="transferDestination" name="destination" required maxlength="120"></div><div class="field"><label for="transferAmount">Valor BTC</label><input class="input" id="transferAmount" name="amount_btc" type="number" min="0.00000001" step="0.00000001" required></div><div class="field"><label for="transferPassword">Senha da conta</label><input class="input" id="transferPassword" name="password" type="password" autocomplete="current-password" required></div><button class="btn btn-primary" type="submit">Criar PSBT</button></form></section>` : '';
+-    $('#walletContent').innerHTML = `<div class="notice ${wallet.status === 'offline' ? 'notice-danger' : 'notice-info'}"><strong>${esc(wallet.mode || '—')}</strong> · ${esc(wallet.network || config.btcNetwork)} · ${esc(statusLabels[wallet.status] || wallet.status || '—')}${wallet.requires_setup ? ' · Configure para habilitar recursos watch-only.' : ''}</div><div class="metrics"><article class="metric-card"><small>Confirmado</small><strong>₿ ${esc(wallet.confirmed_btc || '0.00000000')}</strong></article><article class="metric-card"><small>Pendente</small><strong>₿ ${esc(wallet.pending_btc || '0.00000000')}</strong></article><article class="metric-card"><small>Reservado</small><strong>₿ ${esc(wallet.reserved_btc || '0.00000000')}</strong></article><article class="metric-card"><small>Disponível</small><strong>₿ ${esc(wallet.available_btc || '0.00000000')}</strong></article></div>${setup}<div class="grid-2 section">${addressPanel}${transferForm}</div><div class="section">${transfersPanel}</div>`;
++    const walletNotice = String(wallet.mode || '').toLowerCase() === 'demo'
++      ? ' · Modo demonstração — operações de carteira desativadas.'
++      : wallet.requires_setup ? ' · Configure para habilitar recursos watch-only.' : '';
++    $('#walletContent').innerHTML = `<header class="financial-intro wallet-page-heading"><div><p class="eyebrow"><span class="eyebrow-rule" aria-hidden="true"></span> CARTEIRA BITCOIN</p><h1>Saldo e movimentações</h1></div><p>Estado da carteira, recebimentos e transferências.</p></header><div class="notice ${wallet.status === 'offline' ? 'notice-danger' : 'notice-info'}"><strong>${esc(wallet.mode || '—')}</strong> · ${esc(wallet.network || config.btcNetwork)} · ${esc(statusLabels[wallet.status] || wallet.status || '—')}${walletNotice}</div><div class="metrics wallet-metrics"><article class="metric-card"><small>Confirmado</small><strong>₿ ${esc(wallet.confirmed_btc || '0.00000000')}</strong></article><article class="metric-card"><small>Pendente</small><strong>₿ ${esc(wallet.pending_btc || '0.00000000')}</strong></article><article class="metric-card"><small>Reservado</small><strong>₿ ${esc(wallet.reserved_btc || '0.00000000')}</strong></article><article class="metric-card"><small>Disponível</small><strong>₿ ${esc(wallet.available_btc || '0.00000000')}</strong></article></div>${setup}<div class="grid-2 section wallet-operation-grid">${addressPanel}${transferForm}</div><div class="section wallet-transfers">${transfersPanel}</div>`;
++  }
++
++  function applyWalletModeGate(wallet) {
++    if (wallet.mode !== 'demo' && config.btcMode !== 'demo') return;
++    $('#walletSetupForm')?.closest('.panel')?.remove();
++    $('#walletTransferForm')?.closest('.panel')?.remove();
++    $('#walletContent [data-action="wallet-new-address"]')?.remove();
++    const notice = document.createElement('div');
++    notice.className = 'notice notice-info wallet-mode-note';
++    notice.textContent = 'Configuração e transferências disponíveis quando Bitcoin Core estiver habilitado.';
++    const metrics = $('#walletContent .metrics');
++    if (metrics) metrics.insertAdjacentElement('afterend', notice);
++    else $('#walletContent')?.prepend(notice);
+   }
+ 
+   function createIdempotencyKey() {
+@@ -1239,24 +1540,41 @@
+     const action = button.dataset.action;
+     const id = idOf(button.dataset.id);
+     switch (action) {
+-      case 'home': showView('home'); break;
+-      case 'catalog': showView('catalog'); break;
++      case 'home': showView('home'); focusViewDestination('home'); break;
++      case 'auth-home': closeModal({ restoreFocus: false }); showView('home'); focusViewDestination('home'); break;
++      case 'catalog': showView('catalog'); focusViewDestination('catalog'); break;
+       case 'sell': sellAction(); break;
+       case 'account-menu': accountMenu(); break;
+-      case 'cart': showView('cart'); break;
++      case 'cart': showView('cart'); focusViewDestination('cart'); break;
+       case 'notifications': await openNotifications(); break;
+       case 'search-toggle': toggleSearch(); break;
+       case 'menu': toggleMobileMenu(); break;
+       case 'close-modal': closeModal(); break;
+-      case 'go-view': closeModal(); showView(button.dataset.viewName); break;
++      case 'toggle-password': {
++        const input = $(`#${CSS.escape(button.dataset.passwordTarget || '')}`);
++        if (!input) break;
++        const visible = input.type === 'password';
++        input.type = visible ? 'text' : 'password';
++        button.textContent = visible ? 'Ocultar' : 'Mostrar';
++        button.setAttribute('aria-pressed', String(visible));
++        button.setAttribute('aria-label', `${visible ? 'Ocultar' : 'Mostrar'} senha`);
++        break;
++      }
++      case 'go-view': {
++        const view = button.dataset.viewName;
++        closeModal({ restoreFocus: false });
++        showView(view);
++        focusViewDestination(view);
++        break;
++      }
+       case 'logout': await logout(); break;
+-      case 'logout-then-seller': await logout(); openAuth('register'); if ($('#registerRole')) $('#registerRole').value = 'seller'; break;
++      case 'logout-then-seller': await logout(); openAuth('register', 'seller'); break;
+       case 'open-product': await openProduct(id); break;
+       case 'open-store': await openStore(id); break;
+       case 'add-cart': await addToCart(id); break;
+       case 'add-current-product': await addToCart(id, $('#productQty')?.value || 1); break;
+       case 'checkout': openCheckout(); break;
+-      case 'checkout-orders': closeModal(); showView('account'); break;
++      case 'checkout-orders': closeModal({ restoreFocus: false }); showView('account'); focusViewDestination('account'); break;
+       case 'cart-remove': await updateCart(id, 0); break;
+       case 'cart-qty': {
+         const input = $(`[data-cart-qty="${id}"]`);
+@@ -1325,7 +1643,14 @@
+       return;
+     }
+     const viewButton = event.target.closest('[data-view]');
+-    if (viewButton) { event.preventDefault(); showView(viewButton.dataset.view); return; }
++    if (viewButton) {
++      event.preventDefault();
++      const previousFocus = captureFocusTarget();
++      const view = viewButton.dataset.view;
++      showView(view);
++      focusViewDestination(view, previousFocus);
++      return;
++    }
+     const scrollButton = event.target.closest('[data-scroll]');
+     if (scrollButton) {
+       const target = $(`#${CSS.escape(scrollButton.dataset.scroll)}`);
+@@ -1334,9 +1659,31 @@
+       return;
+     }
+     const sellerTab = event.target.closest('[data-seller-tab]');
+-    if (sellerTab) { state.sellerTab = sellerTab.dataset.sellerTab; renderSeller(); return; }
++    if (sellerTab) {
++      const previousFocus = captureFocusTarget();
++      state.sellerTab = sellerTab.dataset.sellerTab;
++      if (state.activeView !== 'seller') {
++        showView('seller');
++        focusViewDestination('seller', previousFocus);
++      } else {
++        renderSeller();
++        focusDashboardTab('seller', state.sellerTab, previousFocus);
++      }
++      return;
++    }
+     const adminTab = event.target.closest('[data-admin-tab]');
+-    if (adminTab) { state.adminTab = adminTab.dataset.adminTab; renderAdmin(); return; }
++    if (adminTab) {
++      const previousFocus = captureFocusTarget();
++      state.adminTab = adminTab.dataset.adminTab;
++      if (state.activeView !== 'admin') {
++        showView('admin');
++        focusViewDestination('admin', previousFocus);
++      } else {
++        renderAdmin();
++        focusDashboardTab('admin', state.adminTab, previousFocus);
++      }
++      return;
++    }
+     const categoryButton = event.target.closest('[data-category]');
+     if (categoryButton) {
+       $('#categoryFilter').value = categoryButton.dataset.category;
+@@ -1347,8 +1694,15 @@
+     const authTab = event.target.closest('[data-auth-tab]');
+     if (authTab) {
+       const tab = authTab.dataset.authTab;
+-      $('#authBody').innerHTML = tab === 'login' ? loginFormHtml() : registerFormHtml();
+-      $$('.auth-tab').forEach(button => { button.classList.toggle('active', button.dataset.authTab === tab); button.setAttribute('aria-selected', String(button.dataset.authTab === tab)); });
++      if (tab === 'register') state.authRole = $('#registerRole')?.value || state.authRole;
++      $('#authBody').innerHTML = tab === 'login' ? loginFormHtml() : registerFormHtml(state.authRole);
++      $('#authBody').setAttribute('aria-labelledby', tab === 'login' ? 'authLoginTab' : 'authRegisterTab');
++      $$('.auth-tab').forEach(button => {
++        const active = button.dataset.authTab === tab;
++        button.classList.toggle('active', active);
++        button.setAttribute('aria-selected', String(active));
++        button.tabIndex = active ? 0 : -1;
++      });
+       $(tab === 'login' ? '#loginEmail' : '#registerName')?.focus();
+       return;
+     }
+@@ -1405,6 +1759,7 @@
+   document.addEventListener('change', event => {
+     if (event.target.matches('[data-cart-qty]')) updateCart(idOf(event.target.dataset.cartQty), idOf(event.target.value));
+     if (['categoryFilter', 'sortFilter'].includes(event.target.id)) loadProducts();
++    if (event.target.id === 'registerRole') state.authRole = event.target.value;
+     if (event.target.matches('input[name="payment_method"]')) $('#multisigCheckoutFields')?.classList.toggle('hidden', event.target.value === 'lightning' && event.target.checked);
+   });
+ 
+@@ -1414,10 +1769,15 @@
+ 
+   document.addEventListener('error', event => {
+     const image = event.target;
+-    if (image instanceof HTMLImageElement && image.dataset.fallback && image.src !== new URL(image.dataset.fallback, location.origin).href) {
+-      image.src = image.dataset.fallback;
+-      image.removeAttribute('data-fallback');
+-    }
++    if (!(image instanceof HTMLImageElement)) return;
++    const fallback = safeImage(image.dataset.fallback);
++    const source = safeImage(image.getAttribute('src'));
++    if (fallback && source !== fallback && image.dataset.fallbackAttempted !== 'true') {
++      image.dataset.fallbackAttempted = 'true';
++      image.src = fallback;
++      return;
++    }
++    if (image.dataset.imageContext || image.classList.contains('product-image')) markProductImageMissing(image);
+   }, true);
+ 
+   document.addEventListener('keydown', event => {
+@@ -1425,6 +1785,21 @@
+       if ($('#modalRoot .modal')) { closeModal(); return; }
+       if (state.mobileMenuOpen) { closeMobileMenu(); return; }
+       if (state.searchOpen) { state.searchOpen = false; $('#searchForm').classList.remove('search-open'); $('#searchToggle').setAttribute('aria-expanded', 'false'); }
++    }
++    const authTab = event.target instanceof Element ? event.target.closest('[data-auth-tab]') : null;
++    if (authTab && ['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
++      const tabs = $$('[data-auth-tab]', $('#modalRoot')).filter(tab => !tab.disabled);
++      const currentIndex = tabs.indexOf(authTab);
++      if (currentIndex >= 0 && tabs.length) {
++        const nextIndex = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : (currentIndex + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
++        const nextTab = tabs[nextIndex];
++        event.preventDefault();
++        if (nextTab !== authTab) {
++          nextTab.click();
++          nextTab.focus();
++        }
++      }
++      return;
+     }
+     const dialog = $('#modalRoot .modal');
+     if (!dialog || event.key !== 'Tab') return;
+@@ -1455,5 +1830,6 @@
+     loadProducts();
+   });
+ 
++  renderSession();
+   bootstrap();
+ })();

@@ -1,0 +1,825 @@
+diff --git a/templates/index.html b/templates/index.html
+--- a/templates/index.html
++++ b/templates/index.html
+@@ -12,1 +12,2 @@
+   <link rel="stylesheet" href="{{ url_for('static', filename='css/bitloja.css') }}">
++  <link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}">
+
+diff --git a/artifacts/redesign/ui-before/bitloja.js b/static/js/bitloja.js
+index 6068ed5..c6c9d6e 100644
+--- a/artifacts/redesign/ui-before/bitloja.js
++++ b/static/js/bitloja.js
+@@ -39,7 +39,8 @@
+     csrf: '', user: null, products: [], stores: [], cartCount: 0, cart: null,
+     admin: null, seller: null, sellerTab: 'overview', adminTab: 'overview',
+     activeView: 'home', currentProduct: null, notifications: [], unreadCount: 0,
+-    wallet: null, custody: null, searchOpen: false, mobileMenuOpen: false
++    wallet: null, custody: null, searchOpen: false, mobileMenuOpen: false,
++    authRole: 'buyer', modalReturnFocus: null
+   };
+   const config = {
+     btcMode: document.body.dataset.btcMode || 'demo',
+
+@@ -329,55 +332,118 @@
+ 
+   function openModal(title, body, wide = false) {
+     const root = $('#modalRoot');
+-    root.innerHTML = `<div class="modal-wrap"><section class="modal ${wide ? 'wide' : ''}" role="dialog" aria-modal="true" aria-labelledby="activeModalTitle" tabindex="-1"><header class="modal-head"><h2 id="activeModalTitle">${esc(title)}</h2><button class="close-btn" type="button" data-action="close-modal" aria-label="Fechar"><i class="bi bi-x-lg" aria-hidden="true"></i></button></header><div class="modal-body">${body}</div></section></div>`;
++    state.modalReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
++    root.innerHTML = `<div class="modal-wrap"><section class="modal ${wide ? 'wide' : ''}" role="dialog" aria-modal="true" aria-labelledby="activeModalTitle" tabindex="-1"><header class="modal-head"><h2 id="activeModalTitle">${esc(title)}</h2><button class="modal-close" type="button" data-action="close-modal" aria-label="Fechar"><i class="bi bi-x-lg" aria-hidden="true"></i></button></header><div class="modal-body">${body}</div></section></div>`;
+     const wrap = $('.modal-wrap', root);
+     wrap.addEventListener('click', event => { if (event.target === wrap) closeModal(); });
+     const first = $('input:not([type="hidden"]), select, textarea, button, a[href]', wrap);
+     (first || $('.modal', wrap)).focus();
+   }
+ 
+-  function closeModal() {
++  function closeModal({ restoreFocus = true } = {}) {
++    const returnFocus = state.modalReturnFocus;
+     $('#modalRoot').replaceChildren();
+-  }
+-
+-  function openAuth(tab = 'login') {
+-    const body = `<div class="auth-tabs" role="tablist" aria-label="Acesso"><button class="auth-tab ${tab === 'login' ? 'active' : ''}" type="button" data-auth-tab="login" role="tab" aria-selected="${tab === 'login'}">Entrar</button><button class="auth-tab ${tab === 'register' ? 'active' : ''}" type="button" data-auth-tab="register" role="tab" aria-selected="${tab === 'register'}">Criar conta</button></div>
+-      <div id="authBody">${tab === 'login' ? loginFormHtml() : registerFormHtml()}</div>`;
+-    openModal('Conta BitLoja', body);
++    state.modalReturnFocus = null;
++    if (restoreFocus && returnFocus?.isConnected) returnFocus.focus();
++  }
++
++  function openAuth(tab = 'login', role = 'buyer') {
++    state.authRole = role === 'seller' ? 'seller' : 'buyer';
++    const body = `<div class="auth-layout">
++      <aside class="auth-visual" aria-label="Acesso à BitLoja">
++        <a class="auth-brand" href="/" data-action="auth-home" aria-label="BitLoja — início"><span class="brand-mark" aria-hidden="true"><i class="bi bi-box-seam"></i></span><span>BitLoja</span></a>
++        <div class="auth-visual-copy"><p class="auth-kicker">ACESSO AO MARKETPLACE</p><h2>Sua conta.<br>Seus pedidos.</h2><p>${tab === 'register' ? 'Compre, acompanhe suas entregas ou abra sua loja.' : 'Acompanhe pagamentos, mensagens e entregas.'}</p></div>
++        <img class="auth-art" src="/static/assets/bitcoin-bag.webp" alt="" aria-hidden="true">
++        <button class="auth-back" type="button" data-action="close-modal"><i class="bi bi-arrow-left" aria-hidden="true"></i> Voltar à loja</button>
++      </aside>
++      <div class="auth-content">
++        <div class="auth-tabs" role="tablist" aria-label="Acesso à conta">
++          <button id="authLoginTab" class="auth-tab ${tab === 'login' ? 'active' : ''}" type="button" data-auth-tab="login" role="tab" aria-controls="authBody" aria-selected="${tab === 'login'}" tabindex="${tab === 'login' ? '0' : '-1'}">Entrar</button>
++          <button id="authRegisterTab" class="auth-tab ${tab === 'register' ? 'active' : ''}" type="button" data-auth-tab="register" role="tab" aria-controls="authBody" aria-selected="${tab === 'register'}" tabindex="${tab === 'register' ? '0' : '-1'}">Criar conta</button>
++        </div>
++        <div id="authBody" class="auth-body" role="tabpanel" aria-labelledby="${tab === 'login' ? 'authLoginTab' : 'authRegisterTab'}">${tab === 'login' ? loginFormHtml() : registerFormHtml(state.authRole)}</div>
++      </div>
++    </div>`;
++    openModal('Conta BitLoja', body, true);
++    $('.modal-wrap', $('#modalRoot')).classList.add('auth-wrap');
++    $('.modal', $('#modalRoot')).classList.add('auth-modal');
++    $(tab === 'login' ? '#loginEmail' : '#registerName')?.focus();
+   }
+ 
+   function loginFormHtml() {
+-    return `<form id="loginForm"><div class="field"><label for="loginEmail">E-mail</label><input class="input" id="loginEmail" name="email" type="email" autocomplete="username" required></div><div class="field"><label for="loginPassword">Senha</label><input class="input" id="loginPassword" name="password" type="password" autocomplete="current-password" required></div><button class="btn btn-primary" type="submit">Entrar</button></form>`;
++    return `<div class="auth-form-heading"><p class="auth-form-kicker">BEM-VINDO DE VOLTA</p><h2>Entre na BitLoja</h2><p>Acesse seus pedidos e acompanhe cada etapa.</p></div><form class="auth-form" id="loginForm"><div class="field"><label for="loginEmail">E-mail</label><input class="input" id="loginEmail" name="email" type="email" inputmode="email" autocomplete="username" autocapitalize="none" spellcheck="false" required></div><div class="field"><label for="loginPassword">Senha</label><div class="auth-password-field"><input class="input" id="loginPassword" name="password" type="password" autocomplete="current-password" required><button class="auth-password-toggle" type="button" data-action="toggle-password" data-password-target="loginPassword" aria-controls="loginPassword" aria-pressed="false">Mostrar</button></div></div><p class="auth-feedback" id="authFeedback" role="status" aria-live="polite"></p><button class="button button-primary auth-submit" type="submit" data-idle-label="Entrar" data-pending-label="Entrando…">Entrar</button></form>`;
+   }
+ 
+   function registerFormHtml(role = 'buyer') {
+-    return `<form id="registerForm"><div class="field"><label for="registerName">Nome</label><input class="input" id="registerName" name="name" autocomplete="name" required></div><div class="field"><label for="registerEmail">E-mail</label><input class="input" id="registerEmail" name="email" type="email" autocomplete="email" required></div><div class="field"><label for="registerPassword">Senha</label><input class="input" id="registerPassword" name="password" type="password" autocomplete="new-password" minlength="8" required></div><div class="field"><label for="registerRole">Tipo de conta</label><select class="input" id="registerRole" name="role"><option value="buyer" ${role === 'buyer' ? 'selected' : ''}>Comprador</option><option value="seller" ${role === 'seller' ? 'selected' : ''}>Vendedor</option></select></div><button class="btn btn-primary" type="submit">Criar conta</button></form>`;
++    return `<div class="auth-form-heading"><p class="auth-form-kicker">NOVA CONTA</p><h2>Crie sua conta</h2><p>Escolha perfil comprador ou vendedor. Seu acesso segue o perfil cadastrado.</p></div><form class="auth-form" id="registerForm"><div class="field"><label for="registerName">Nome</label><input class="input" id="registerName" name="name" autocomplete="name" required></div><div class="field"><label for="registerEmail">E-mail</label><input class="input" id="registerEmail" name="email" type="email" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false" required></div><div class="field"><label for="registerPassword">Senha</label><div class="auth-password-field"><input class="input" id="registerPassword" name="password" type="password" autocomplete="new-password" minlength="8" required><button class="auth-password-toggle" type="button" data-action="toggle-password" data-password-target="registerPassword" aria-controls="registerPassword" aria-pressed="false">Mostrar</button></div><small class="auth-help">Use pelo menos 8 caracteres.</small></div><div class="field"><label for="registerRole">Tipo de conta</label><select class="input" id="registerRole" name="role"><option value="buyer" ${role === 'buyer' ? 'selected' : ''}>Comprador</option><option value="seller" ${role === 'seller' ? 'selected' : ''}>Vendedor</option></select></div><p class="auth-feedback" id="authFeedback" role="status" aria-live="polite"></p><button class="button button-primary auth-submit" type="submit" data-idle-label="Criar conta" data-pending-label="Criando…">Criar conta</button></form>`;
++  }
++
++  function setAuthFeedback(form, message = '', isError = false) {
++    const feedback = $('#authFeedback', form);
++    if (!feedback) return;
++    feedback.textContent = String(message || '');
++    feedback.classList.toggle('error', isError && Boolean(message));
++  }
++
++  function setAuthPending(form, pending) {
++    form.setAttribute('aria-busy', String(pending));
++    $$('input, select, button', form).forEach(control => { control.disabled = pending; });
++    $$('#modalRoot [data-auth-tab]').forEach(tab => { tab.disabled = pending; });
++    const submit = $('button[type="submit"]', form);
++    if (submit) submit.textContent = pending ? submit.dataset.pendingLabel : submit.dataset.idleLabel;
++  }
++
++  function focusAuthDestination(view) {
++    const destination = $(`#${view}Content`);
++    if (!destination) return;
++    destination.tabIndex = -1;
++    destination.focus();
+   }
+ 
+   async function doLogin(event) {
+     event.preventDefault();
++    const form = event.currentTarget;
++    const payload = JSON.stringify(Object.fromEntries(new FormData(form)));
++    setAuthFeedback(form);
++    setAuthPending(form, true);
+     try {
+-      const data = await api('/api/login', { method: 'POST', body: JSON.stringify(Object.fromEntries(new FormData(event.currentTarget))) });
++      const data = await api('/api/login', { method: 'POST', body: payload });
+       state.user = data.user || null;
+       state.csrf = data.csrf_token || state.csrf;
+-      closeModal();
++      closeModal({ restoreFocus: false });
+       renderSession();
+       toast(data.message || 'Sessão iniciada.');
+-      showView(state.user?.role === 'admin' ? 'admin' : state.user?.role === 'seller' ? 'seller' : 'account');
+-    } catch (error) { toast(error.message, 'error'); }
++      const nextView = state.user?.role === 'admin' ? 'admin' : state.user?.role === 'seller' ? 'seller' : 'account';
++      showView(nextView);
++      focusAuthDestination(nextView);
++    } catch (error) {
++      setAuthFeedback(form, error.message, true);
++    } finally {
++      if (form.isConnected) setAuthPending(form, false);
++    }
+   }
+ 
+   async function doRegister(event) {
+     event.preventDefault();
++    const form = event.currentTarget;
++    const payload = JSON.stringify(Object.fromEntries(new FormData(form)));
++    setAuthFeedback(form);
++    setAuthPending(form, true);
+     try {
+-      const data = await api('/api/register', { method: 'POST', body: JSON.stringify(Object.fromEntries(new FormData(event.currentTarget))) });
++      const data = await api('/api/register', { method: 'POST', body: payload });
+       state.user = data.user || null;
+       state.csrf = data.csrf_token || state.csrf;
+-      closeModal();
++      closeModal({ restoreFocus: false });
+       renderSession();
+       toast(data.message || 'Conta criada.');
+-      showView(state.user?.role === 'seller' ? 'seller' : 'account');
+-    } catch (error) { toast(error.message, 'error'); }
++      const nextView = state.user?.role === 'seller' ? 'seller' : 'account';
++      showView(nextView);
++      focusAuthDestination(nextView);
++    } catch (error) {
++      setAuthFeedback(form, error.message, true);
++    } finally {
++      if (form.isConnected) setAuthPending(form, false);
++    }
+   }
+ 
+   async function logout() {
+
+@@ -408,9 +474,7 @@
+ 
+   function sellAction() {
+     if (!state.user) {
+-      openAuth('register');
+-      const select = $('#registerRole');
+-      if (select) select.value = 'seller';
++      openAuth('register', 'seller');
+       return;
+     }
+     if (state.user.role === 'seller') { showView('seller'); return; }
+
+@@ -1240,6 +1353,7 @@
+     const id = idOf(button.dataset.id);
+     switch (action) {
+       case 'home': showView('home'); break;
++      case 'auth-home': closeModal(); showView('home'); break;
+       case 'catalog': showView('catalog'); break;
+       case 'sell': sellAction(); break;
+       case 'account-menu': accountMenu(); break;
+
+@@ -1248,9 +1362,19 @@
+       case 'search-toggle': toggleSearch(); break;
+       case 'menu': toggleMobileMenu(); break;
+       case 'close-modal': closeModal(); break;
++      case 'toggle-password': {
++        const input = $(`#${CSS.escape(button.dataset.passwordTarget || '')}`);
++        if (!input) break;
++        const visible = input.type === 'password';
++        input.type = visible ? 'text' : 'password';
++        button.textContent = visible ? 'Ocultar' : 'Mostrar';
++        button.setAttribute('aria-pressed', String(visible));
++        button.setAttribute('aria-label', `${visible ? 'Ocultar' : 'Mostrar'} senha`);
++        break;
++      }
+       case 'go-view': closeModal(); showView(button.dataset.viewName); break;
+       case 'logout': await logout(); break;
+-      case 'logout-then-seller': await logout(); openAuth('register'); if ($('#registerRole')) $('#registerRole').value = 'seller'; break;
++      case 'logout-then-seller': await logout(); openAuth('register', 'seller'); break;
+       case 'open-product': await openProduct(id); break;
+       case 'open-store': await openStore(id); break;
+       case 'add-cart': await addToCart(id); break;
+
+@@ -1347,8 +1471,15 @@
+     const authTab = event.target.closest('[data-auth-tab]');
+     if (authTab) {
+       const tab = authTab.dataset.authTab;
+-      $('#authBody').innerHTML = tab === 'login' ? loginFormHtml() : registerFormHtml();
+-      $$('.auth-tab').forEach(button => { button.classList.toggle('active', button.dataset.authTab === tab); button.setAttribute('aria-selected', String(button.dataset.authTab === tab)); });
++      if (tab === 'register') state.authRole = $('#registerRole')?.value || state.authRole;
++      $('#authBody').innerHTML = tab === 'login' ? loginFormHtml() : registerFormHtml(state.authRole);
++      $('#authBody').setAttribute('aria-labelledby', tab === 'login' ? 'authLoginTab' : 'authRegisterTab');
++      $$('.auth-tab').forEach(button => {
++        const active = button.dataset.authTab === tab;
++        button.classList.toggle('active', active);
++        button.setAttribute('aria-selected', String(active));
++        button.tabIndex = active ? 0 : -1;
++      });
+       $(tab === 'login' ? '#loginEmail' : '#registerName')?.focus();
+       return;
+     }
+
+@@ -1405,6 +1536,7 @@
+   document.addEventListener('change', event => {
+     if (event.target.matches('[data-cart-qty]')) updateCart(idOf(event.target.dataset.cartQty), idOf(event.target.value));
+     if (['categoryFilter', 'sortFilter'].includes(event.target.id)) loadProducts();
++    if (event.target.id === 'registerRole') state.authRole = event.target.value;
+     if (event.target.matches('input[name="payment_method"]')) $('#multisigCheckoutFields')?.classList.toggle('hidden', event.target.value === 'lightning' && event.target.checked);
+   });
+ 
+
+@@ -1426,6 +1558,21 @@
+       if (state.mobileMenuOpen) { closeMobileMenu(); return; }
+       if (state.searchOpen) { state.searchOpen = false; $('#searchForm').classList.remove('search-open'); $('#searchToggle').setAttribute('aria-expanded', 'false'); }
+     }
++    const authTab = event.target instanceof Element ? event.target.closest('[data-auth-tab]') : null;
++    if (authTab && ['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
++      const tabs = $$('[data-auth-tab]', $('#modalRoot')).filter(tab => !tab.disabled);
++      const currentIndex = tabs.indexOf(authTab);
++      if (currentIndex >= 0 && tabs.length) {
++        const nextIndex = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : (currentIndex + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
++        const nextTab = tabs[nextIndex];
++        event.preventDefault();
++        if (nextTab !== authTab) {
++          nextTab.click();
++          nextTab.focus();
++        }
++      }
++      return;
++    }
+     const dialog = $('#modalRoot .modal');
+     if (!dialog || event.key !== 'Tab') return;
+     const focusable = $$('button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href]', dialog).filter(element => element.offsetParent !== null);
+
+diff --git a/static/css/auth.css b/static/css/auth.css
+new file mode 100644
+index 0000000..bfaf602
+--- /dev/null
++++ b/static/css/auth.css
+@@ -0,0 +1,565 @@
++.auth-wrap {
++  padding: 24px;
++}
++
++.auth-modal {
++  position: relative;
++  width: min(960px, 100%);
++  max-height: min(90vh, 900px);
++  overflow: auto;
++  border: 1px solid rgba(255, 255, 255, .48);
++  border-radius: 20px;
++  background: #fff;
++  color: var(--navy);
++  scrollbar-width: thin;
++  scrollbar-color: #aab9cc transparent;
++}
++
++.auth-modal > .modal-head {
++  position: absolute;
++  z-index: 3;
++  top: 15px;
++  right: 15px;
++  display: grid;
++  width: 42px;
++  height: 42px;
++  min-height: 0;
++  padding: 0;
++  border: 0;
++  pointer-events: none;
++}
++
++.auth-modal > .modal-head h2 {
++  position: absolute;
++  width: 1px;
++  height: 1px;
++  padding: 0;
++  margin: -1px;
++  overflow: hidden;
++  clip: rect(0, 0, 0, 0);
++  white-space: nowrap;
++  border: 0;
++}
++
++.auth-modal .modal-close {
++  width: 42px;
++  height: 42px;
++  border-color: rgba(0, 17, 68, .12);
++  border-radius: 50%;
++  background: #fff;
++  color: var(--navy);
++  font-size: 15px;
++  pointer-events: auto;
++  transition: background .18s ease, border-color .18s ease, transform .18s ease;
++}
++
++.auth-modal .modal-close:hover {
++  transform: rotate(90deg);
++  border-color: rgba(0, 165, 244, .36);
++  background: #eff9ff;
++}
++
++.auth-modal > .modal-body {
++  padding: 0;
++}
++
++.auth-layout {
++  display: grid;
++  min-height: min(690px, 90vh);
++  grid-template-columns: minmax(290px, .84fr) minmax(0, 1.16fr);
++}
++
++.auth-visual {
++  position: relative;
++  display: flex;
++  min-width: 0;
++  flex-direction: column;
++  overflow: hidden;
++  padding: 30px 32px 26px;
++  background: linear-gradient(150deg, #006da8 0%, #00639d 52%, #00548f 100%);
++  color: #fff;
++  isolation: isolate;
++}
++
++.auth-visual::before {
++  position: absolute;
++  z-index: -1;
++  right: -142px;
++  bottom: 68px;
++  width: 370px;
++  height: 370px;
++  border: 1px solid rgba(255, 255, 255, .15);
++  border-radius: 50%;
++  box-shadow: 0 0 0 38px rgba(255, 255, 255, .035), 0 0 0 78px rgba(255, 255, 255, .025);
++  content: "";
++}
++
++.auth-brand {
++  position: relative;
++  z-index: 1;
++  display: inline-flex;
++  width: fit-content;
++  align-items: center;
++  gap: 10px;
++  color: #fff;
++  font-size: 21px;
++  font-weight: 900;
++  letter-spacing: -.045em;
++}
++
++.auth-brand .brand-mark {
++  width: 38px;
++  height: 38px;
++  border-radius: 11px;
++  background: #fff;
++  color: #008bd5;
++  box-shadow: 0 8px 18px rgba(0, 45, 94, .16);
++}
++
++.auth-visual-copy {
++  position: relative;
++  z-index: 1;
++  width: 100%;
++  margin-block: auto 0;
++  padding: 72px 0 224px;
++}
++
++.auth-kicker,
++.auth-form-kicker {
++  margin: 0;
++  font-size: 10px;
++  font-weight: 800;
++  letter-spacing: .13em;
++  line-height: 1.4;
++  text-transform: uppercase;
++}
++
++.auth-kicker {
++  color: #fff;
++}
++
++.auth-visual-copy h2 {
++  max-width: 340px;
++  margin: 12px 0 14px;
++  font-size: clamp(34px, 4vw, 44px);
++  font-weight: 850;
++  letter-spacing: -.075em;
++  line-height: .99;
++}
++
++.auth-visual-copy > p:last-child {
++  max-width: 290px;
++  margin: 0;
++  color: #fff;
++  font-size: 13px;
++  line-height: 1.55;
++}
++
++.auth-art {
++  position: absolute;
++  z-index: 0;
++  right: 17px;
++  bottom: 52px;
++  width: min(64%, 238px);
++  max-height: 245px;
++  object-fit: contain;
++  filter: drop-shadow(0 18px 28px rgba(0, 36, 80, .2));
++}
++
++.auth-back {
++  position: relative;
++  z-index: 1;
++  display: inline-flex;
++  width: fit-content;
++  min-height: 36px;
++  align-items: center;
++  gap: 9px;
++  padding: 0;
++  border: 0;
++  background: transparent;
++  color: #fff;
++  font-size: 12px;
++  font-weight: 700;
++  cursor: pointer;
++}
++
++.auth-back:hover {
++  color: #fff;
++}
++
++.auth-back .bi {
++  font-size: 14px;
++  transition: transform .18s ease;
++}
++
++.auth-back:hover .bi {
++  transform: translateX(-3px);
++}
++
++.auth-content {
++  display: flex;
++  min-width: 0;
++  flex-direction: column;
++  justify-content: center;
++  padding: 56px clamp(34px, 5vw, 68px);
++  background: #fff;
++}
++
++.auth-tabs {
++  display: grid;
++  grid-template-columns: 1fr 1fr;
++  gap: 4px;
++  margin: 0 0 26px;
++  padding: 4px;
++  border: 1px solid #e5ebf2;
++  border-radius: 12px;
++  background: #f1f5f9;
++}
++
++.auth-tab {
++  min-height: 43px;
++  border: 0;
++  border-radius: 9px;
++  background: transparent;
++  color: #53657e;
++  font-size: 12px;
++  font-weight: 800;
++  cursor: pointer;
++  transition: background .18s ease, color .18s ease, box-shadow .18s ease;
++}
++
++.auth-tab:hover:not(.active) {
++  color: var(--navy);
++  background: rgba(255, 255, 255, .68);
++}
++
++.auth-tab.active {
++  background: #fff;
++  color: var(--navy);
++  box-shadow: 0 2px 8px rgba(0, 24, 65, .09);
++}
++
++.auth-form-heading {
++  margin-bottom: 24px;
++}
++
++.auth-form-kicker {
++  color: #006da8;
++}
++
++.auth-form-heading h2 {
++  margin: 8px 0 6px;
++  color: var(--navy);
++  font-size: clamp(25px, 3vw, 31px);
++  font-weight: 850;
++  letter-spacing: -.065em;
++  line-height: 1.1;
++}
++
++.auth-form-heading > p:last-child {
++  max-width: 390px;
++  margin: 0;
++  color: #5f7088;
++  font-size: 13px;
++  line-height: 1.55;
++}
++
++.auth-form {
++  display: grid;
++  gap: 17px;
++  width: 100%;
++}
++
++.auth-form .field {
++  min-width: 0;
++  margin: 0;
++}
++
++.auth-form .field label {
++  margin-bottom: 7px;
++  color: #233a60;
++  font-size: 12px;
++  font-weight: 750;
++}
++
++.auth-form .input {
++  width: 100%;
++  min-height: 52px;
++  padding: 12px 14px;
++  border: 1px solid #d4deea;
++  border-radius: 10px;
++  background-color: #fff;
++  color: var(--navy);
++  font-size: 14px;
++  outline: 0;
++  transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
++}
++
++.auth-form .input::placeholder {
++  color: #66758c;
++}
++
++.auth-form .input:hover:not(:focus) {
++  border-color: #b8c7d9;
++}
++
++.auth-form .input:focus {
++  border-color: #00a5f4;
++  box-shadow: 0 0 0 3px rgba(0, 165, 244, .15);
++}
++
++.auth-password-field {
++  position: relative;
++}
++
++.auth-password-field .input {
++  padding-right: 82px;
++}
++
++.auth-password-toggle {
++  position: absolute;
++  top: 50%;
++  right: 12px;
++  min-height: 34px;
++  padding: 0 5px;
++  transform: translateY(-50%);
++  border: 0;
++  border-radius: 6px;
++  background: transparent;
++  color: #006da8;
++  font-size: 11px;
++  font-weight: 800;
++  cursor: pointer;
++}
++
++.auth-password-toggle:hover:not(:disabled) {
++  color: var(--navy);
++  background: #eff9ff;
++}
++
++.auth-help {
++  display: block;
++  margin-top: 7px;
++  color: #64748b;
++  font-size: 11px;
++  line-height: 1.4;
++}
++
++.auth-feedback {
++  margin: 0;
++  color: #60728d;
++  font-size: 12px;
++  line-height: 1.45;
++}
++
++.auth-feedback:empty {
++  display: none;
++}
++
++.auth-feedback.error {
++  padding: 10px 12px;
++  border: 1px solid #f2c4ca;
++  border-radius: 9px;
++  background: #fff4f5;
++  color: #a21f32;
++}
++
++.auth-modal .auth-submit {
++  width: 100%;
++  min-height: 52px;
++  margin-top: 2px;
++  padding-inline: 18px;
++  border: 1px solid var(--navy);
++  border-radius: 10px;
++  background: var(--navy);
++  color: #fff;
++  font-size: 12px;
++  font-weight: 850;
++  letter-spacing: .035em;
++  box-shadow: 0 9px 18px rgba(0, 11, 53, .15);
++  transition: background .18s ease, box-shadow .18s ease, transform .18s ease;
++}
++
++.auth-modal .auth-submit:hover:not(:disabled) {
++  transform: translateY(-1px);
++  background: #10204c;
++  box-shadow: 0 12px 22px rgba(0, 11, 53, .2);
++}
++
++.auth-modal .auth-submit:disabled {
++  opacity: .72;
++  cursor: progress;
++}
++
++.auth-modal :focus-visible {
++  outline: 3px solid #008bd5;
++  outline-offset: 2px;
++  box-shadow: 0 0 0 5px rgba(0, 165, 244, .15);
++}
++
++@media (max-width: 760px) {
++  .auth-wrap {
++    padding: 12px;
++  }
++
++  .auth-modal {
++    width: min(560px, 100%);
++    max-height: calc(100dvh - 24px);
++    border-radius: 17px;
++  }
++
++  .auth-modal > .modal-head {
++    top: 13px;
++    right: 13px;
++  }
++
++  .auth-layout {
++    min-height: 0;
++    grid-template-columns: minmax(0, 1fr);
++  }
++
++  .auth-visual {
++    min-height: 184px;
++    padding: 20px 23px 18px;
++  }
++
++  .auth-visual-copy {
++    width: min(68%, 260px);
++    margin: 12px 0 0;
++    padding: 0;
++  }
++
++  .auth-visual-copy h2 {
++    margin: 5px 0 0;
++    font-size: 25px;
++    line-height: 1.02;
++  }
++
++  .auth-visual-copy > p:last-child,
++  .auth-back {
++    display: none;
++  }
++
++  .auth-kicker {
++    font-size: 8px;
++  }
++
++  .auth-art {
++    right: 22px;
++    bottom: 11px;
++    width: 112px;
++    max-height: 142px;
++  }
++
++  .auth-content {
++    padding: 25px 25px 29px;
++  }
++
++  .auth-tabs {
++    margin-bottom: 22px;
++  }
++}
++
++@media (max-width: 430px) {
++  .auth-wrap {
++    padding: 9px;
++  }
++
++  .auth-modal {
++    max-height: calc(100dvh - 18px);
++    border-radius: 16px;
++  }
++
++  .auth-visual {
++    min-height: 170px;
++    padding: 18px 19px 16px;
++  }
++
++  .auth-brand {
++    gap: 8px;
++    font-size: 19px;
++  }
++
++  .auth-brand .brand-mark {
++    width: 34px;
++    height: 34px;
++    font-size: 17px;
++  }
++
++  .auth-visual-copy {
++    margin-top: 11px;
++  }
++
++  .auth-visual-copy h2 {
++    font-size: 23px;
++  }
++
++  .auth-art {
++    right: 14px;
++    bottom: 7px;
++    width: 103px;
++    max-height: 130px;
++  }
++
++  .auth-content {
++    padding: 22px 19px 24px;
++  }
++
++  .auth-tabs {
++    margin-bottom: 19px;
++  }
++
++  .auth-form-heading {
++    margin-bottom: 20px;
++  }
++
++  .auth-form {
++    gap: 14px;
++  }
++
++  .auth-form .input {
++    min-height: 50px;
++  }
++}
++
++@media (max-height: 720px) and (max-width: 760px) {
++  .auth-visual {
++    min-height: 148px;
++    padding-block: 15px 12px;
++  }
++
++  .auth-visual-copy {
++    margin-top: 7px;
++  }
++
++  .auth-kicker {
++    display: none;
++  }
++
++  .auth-art {
++    width: 88px;
++    max-height: 112px;
++  }
++
++  .auth-content {
++    padding-block: 18px 21px;
++  }
++
++  .auth-tabs {
++    margin-bottom: 16px;
++  }
++
++  .auth-form-heading {
++    margin-bottom: 15px;
++  }
++}
++
++@media (prefers-reduced-motion: reduce) {
++  .auth-modal *,
++  .auth-modal *::before,
++  .auth-modal *::after {
++    scroll-behavior: auto;
++    transition-duration: .01ms !important;
++    animation-duration: .01ms !important;
++  }
++}

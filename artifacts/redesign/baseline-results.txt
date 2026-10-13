@@ -1,0 +1,27 @@
+BASELINE SMOKE (original source snapshot)
+Attempt 1: python - -> WindowsApps execution alias; output: Python not found; exit status 9009.
+Attempt 2: bundled Python before dependency install -> ModuleNotFoundError: flask; exit status 1.
+Dependency setup: bundled Python -m pip install -r requirements.txt; Flask==3.1.3 install status 0.
+Command: C:\Users\guell\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -
+Working directory: artifacts/redesign/baseline (copied original app.py).
+Input: DATABASE_PATH set to fresh tempfile DB before import; app import plus explicit init_db(); Flask test_client GET /, /api/bootstrap, /api/products.
+Python stdin:
+import os, tempfile
+
+isolated_dir = tempfile.mkdtemp(prefix="bitloja-baseline-")
+os.environ["DATABASE_PATH"] = os.path.join(isolated_dir, "marketplace.db")
+import app
+app.init_db()
+client = app.app.test_client()
+for path in ("/", "/api/bootstrap", "/api/products"):
+    response = client.get(path)
+    payload = response.get_json(silent=True)
+    summary = {}
+    for key, value in (payload or {}).items():
+        summary[key] = len(value) if isinstance(value, (dict, list)) else type(value).__name__
+    print(f"GET {path} | status={response.status_code} | content_type={response.content_type} | summary={summary}")
+Output:
+GET / | status=200 | content_type=text/html; charset=utf-8 | summary={}
+GET /api/bootstrap | status=200 | content_type=application/json | summary={'btc_mode': 'str', 'btc_network': 'str', 'cart_count': 'int', 'commission_signing_mode': 'str', 'csrf_token': 'str', 'custody_mode': 'str', 'lightning_mode': 'str', 'platform_fee_bps': 'int', 'user': 'NoneType'}
+GET /api/products | status=200 | content_type=application/json | summary={'categories': 6, 'products': 8}
+Exit status: 0

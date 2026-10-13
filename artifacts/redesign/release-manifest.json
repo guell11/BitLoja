@@ -1,0 +1,426 @@
+{
+  "archive": "MODIFIED_FILE.zip",
+  "baseline_files": [
+    {
+      "path": "README.md",
+      "sha256": "2E054A4C5C613326EEA26FDE2242F7BD9AA7BE22FF1DD3B2F9EB30E279B0B807"
+    },
+    {
+      "path": "app.py",
+      "sha256": "815DD183130DDB0A645D3425AB902C73C477F6D3A809526F3E3F04CAA7E02172"
+    },
+    {
+      "path": "env.example",
+      "sha256": "332076C745F7AD84CC8273B813DC97648396F82BCD84E6DE0F6E353E39F211A1"
+    },
+    {
+      "path": "requirements.txt",
+      "sha256": "5325CD2309255D509584F9CBD949F04BD20C0522470030D8AEA1719A9F680F8F"
+    },
+    {
+      "path": "templates/index.html",
+      "sha256": "EB58BEBE324C13D701489867022BD2AEEA95AA407AFDBECCA247BB5F62A6DFDD"
+    }
+  ],
+  "diff": {
+    "bytes": 709467,
+    "path": "DIFF_FILE.patch",
+    "sha256": "506E3F8D29916F5A33774FCA073D53EDB3513D02AF0F1508A1006F2631209501"
+  },
+  "files": [
+    {
+      "bytes": 212,
+      "path": ".gitignore",
+      "sha256": "C974C6D67E11C53B8C99F7AF1EE6028C40B70755324DE229EBCCAB7C49130244"
+    },
+    {
+      "bytes": 11558,
+      "path": "LICENSE",
+      "sha256": "1EB85FC97224598DAD1852B5D6483BBCF0AA8608790DCC657A5A2A761AE9C8C6"
+    },
+    {
+      "bytes": 22300,
+      "path": "README.md",
+      "sha256": "0B40B8768C8517011D5B00FEAB77E5659CEE8F12B529FF949167DB9B74A7787E"
+    },
+    {
+      "bytes": 151226,
+      "path": "app.py",
+      "sha256": "B000446B8A232869CCA4290695D4DB5E1853C66D406340FA637BFD8A393B6FC9"
+    },
+    {
+      "bytes": 282,
+      "path": "bitcoin.conf.example",
+      "sha256": "A95BA6860EBC8CD3B1601FBF5DEF01FA0DEFC920FB5F2A9D9DC05425BB1C3EA1"
+    },
+    {
+      "bytes": 13567,
+      "path": "design-qa.md",
+      "sha256": "757EAD9718078F38A7FB64E4FD664555A92604247989E33E87604F0874C902B8"
+    },
+    {
+      "bytes": 364317,
+      "path": "docs/screenshots/admin.png",
+      "sha256": "05D2D6537F6E7AE4BBFBC4FFFD4A5541AC80676FDE7F3A464E4EB6250EED68FE"
+    },
+    {
+      "bytes": 1237075,
+      "path": "docs/screenshots/home.png",
+      "sha256": "E292B8F8FBA4CE1AA7DDE19650B4413A4F6A59521025315AE2603A3EAFCC2395"
+    },
+    {
+      "bytes": 817962,
+      "path": "docs/screenshots/product.png",
+      "sha256": "FB3F98F1A27D5D92D4D7C08D8AF7AB3C4C0B6B8426BDE13D60C5F7E5D6B6E056"
+    },
+    {
+      "bytes": 6454,
+      "path": "docs/security-wallets.md",
+      "sha256": "0A8AA63C76B766F12BBF671A83B5D8B4CA2EE1DAB81C82146A572AB294E86D0F"
+    },
+    {
+      "bytes": 1256,
+      "path": "env.example",
+      "sha256": "619B369CB5D471497BC0A2C8EB8EB05128566778BAFDD67B2B9AAA97E24643DE"
+    },
+    {
+      "bytes": 362,
+      "path": "lnd.conf.example",
+      "sha256": "233A172DF6494361DEBEB7EBC057085805F04284579C008936D07DE90E612D1E"
+    },
+    {
+      "bytes": 51175,
+      "path": "marketplace_features.py",
+      "sha256": "699D73E1FD0DC4201B4535F5FF6E4C0FFF51C0F832179C5C8C06989DBB925839"
+    },
+    {
+      "bytes": 14,
+      "path": "requirements.txt",
+      "sha256": "5325CD2309255D509584F9CBD949F04BD20C0522470030D8AEA1719A9F680F8F"
+    },
+    {
+      "bytes": 237,
+      "path": "run.bat",
+      "sha256": "248167DCBE35460E8F53F166516BCEF636CE862BCFCC1E635A1BC56CC7FD7B76"
+    },
+    {
+      "bytes": 240,
+      "path": "run.sh",
+      "sha256": "7329F056D4446DC0A76678D4DB5473022EE9A2BD2AE7B8758FEF2225A406FBA7"
+    },
+    {
+      "bytes": 319524,
+      "path": "static/assets/bitcoin-bag.webp",
+      "sha256": "CAE7BA34AD1FF496C4D8E4186806A1C61AB225F7CCE1AC53DD163377D41CEE31"
+    },
+    {
+      "bytes": 236770,
+      "path": "static/assets/bitcoin-cart.webp",
+      "sha256": "BB81D62A72D07D7686D43FEE4FC533A4D7DCC41125AC29ECC21D7211197DC00F"
+    },
+    {
+      "bytes": 225242,
+      "path": "static/assets/bitcoin-crystal.webp",
+      "sha256": "22054B7C7E8A2ECDBAFDF6F8EB978DAC088E523F13BD9FCEDAE58F1B78343370"
+    },
+    {
+      "bytes": 237386,
+      "path": "static/assets/blue-brush.webp",
+      "sha256": "A75D61B4C0A71F662CD13206ABF082A3B85968E7A9C013B15682F2885A344B43"
+    },
+    {
+      "bytes": 166402,
+      "path": "static/assets/products/backpack.webp",
+      "sha256": "016F97946D6004363557AF132A4053FC7E05553BE49FBCE4ED81865341663919"
+    },
+    {
+      "bytes": 43124,
+      "path": "static/assets/products/bottle.webp",
+      "sha256": "1084CD5BEBB3093CC596F0A350CADA04A1F5A116F983B6157D82708243074E93"
+    },
+    {
+      "bytes": 128776,
+      "path": "static/assets/products/headset.webp",
+      "sha256": "BB3589721CBD351B1CBA8AC4E5DBEBEBB36F55407601F8E6BC1A78E6980137C3"
+    },
+    {
+      "bytes": 74190,
+      "path": "static/assets/products/keyboard.webp",
+      "sha256": "6D96FA0B0CC5EEACAD68449E511AC4F9999F64DCA4EFB8908B196FD4C6B4A159"
+    },
+    {
+      "bytes": 64528,
+      "path": "static/assets/products/lamp.webp",
+      "sha256": "BF7DEA3DF6A00FBB620547B12344CA8EB4615F26115B38ECCD452A28A736E533"
+    },
+    {
+      "bytes": 67760,
+      "path": "static/assets/products/organizer.webp",
+      "sha256": "72915338DF14DF9F3E2112C92C9EF68CF3053294BF064BD79BF423728E518A09"
+    },
+    {
+      "bytes": 87664,
+      "path": "static/assets/products/ssd.webp",
+      "sha256": "86400255AA65585DC89EAFCF6BC9546305C778B53DF201CA6ED80AC4ADB1545F"
+    },
+    {
+      "bytes": 159600,
+      "path": "static/assets/products/watch.webp",
+      "sha256": "08528F0F525F9E99168685433462ED74CFB0F2CD2CDEB561F8095A581FEADECF"
+    },
+    {
+      "bytes": 206762,
+      "path": "static/assets/seller-parcel.webp",
+      "sha256": "EE647873D98F2A14D74BA0AA1330A0F1C8AB99D0A1CF4AEA482321DEECECF44E"
+    },
+    {
+      "bytes": 9461,
+      "path": "static/css/auth.css",
+      "sha256": "013BD388E65FDC1CA5B1F5861B8A46EB88227E61810941370EF6CFB0E4B42C43"
+    },
+    {
+      "bytes": 65030,
+      "path": "static/css/bitloja.css",
+      "sha256": "B498BFE3F45063254D9293BBB088D1BB471801BA9C49E2B67089A543F333DA98"
+    },
+    {
+      "bytes": 10416,
+      "path": "static/css/cart.css",
+      "sha256": "B2ABB33429B31F779F4E2E4E05CCE78F9EDD87E4B5BDD9601ADC603D7775EB32"
+    },
+    {
+      "bytes": 31176,
+      "path": "static/css/dashboard.css",
+      "sha256": "967D3077D2BCED0E80DD22FA5D644F5632ED09479FF059E17ED52EF46B3172BB"
+    },
+    {
+      "bytes": 30723,
+      "path": "static/css/glass.css",
+      "sha256": "FD6211E99A986771F2FF577AC8D3907C1A80EBFF24A979C2AEFF1C61B0385423"
+    },
+    {
+      "bytes": 4388,
+      "path": "static/fonts/ARCHIVO-OFL.txt",
+      "sha256": "108B4E57C9C796D3D38D0428CA7EE39DE47AD93187302718D9B2D8864B9B716B"
+    },
+    {
+      "bytes": 4385,
+      "path": "static/fonts/CAVEAT-OFL.txt",
+      "sha256": "1F9D81D094273D82F3898A1EE8B598A717D050ECBF5FF7BEDE105B704880157B"
+    },
+    {
+      "bytes": 4399,
+      "path": "static/fonts/JETBRAINS-MONO-OFL.txt",
+      "sha256": "B2FE5E8987594E9FFD1D2CA52A2F5D73EB8335243893C5D6254B5AD69269591D"
+    },
+    {
+      "bytes": 34928,
+      "path": "static/fonts/archivo-variable-latin.woff2",
+      "sha256": "8F704806DBEDEAAECA334B11EC348BC3AC3A439D6431544B3AFB54F534EE4967"
+    },
+    {
+      "bytes": 130396,
+      "path": "static/fonts/bootstrap-icons.woff2",
+      "sha256": "476ADF42B40325098FCFA8B36AB3E769186BB4F6CE6A249753E2E1A9C22BF99E"
+    },
+    {
+      "bytes": 74932,
+      "path": "static/fonts/caveat-variable-latin.woff2",
+      "sha256": "891951DF5E8B5B0F0BC760D31375405E795C666B5ADD70437DE12D4A6482B33F"
+    },
+    {
+      "bytes": 40404,
+      "path": "static/fonts/jetbrains-mono-variable-latin.woff2",
+      "sha256": "18BE452724BFDC236C074CA94A249A7F41A86752C7D04AB258CE9ED5651F6A7E"
+    },
+    {
+      "bytes": 1093,
+      "path": "static/icons/LICENSE",
+      "sha256": "0FB3E11BD57E896C5A512AFD64864D28A37DE45D19835016C87CA1AD19EAD969"
+    },
+    {
+      "bytes": 98223,
+      "path": "static/icons/bootstrap-icons.css",
+      "sha256": "95FB573D41FD42DEE8ABB0E64F4B6CEA929C7BC2E3E00E975648BAC7F1EA1C8B"
+    },
+    {
+      "bytes": 148335,
+      "path": "static/js/bitloja.js",
+      "sha256": "69897EA3F4FBD95534E1B357B88304B14C4B72526A355392F64809BF9E97C115"
+    },
+    {
+      "bytes": 26464,
+      "path": "templates/index.html",
+      "sha256": "94EF89318DA68CD77FC4EF06A11461CF6312A41ED54B0F2D2AF9A827DBABCD8B"
+    },
+    {
+      "bytes": 36539,
+      "path": "tests/test_marketplace.py",
+      "sha256": "C6CB00F78DAA4F4C971CC07D0719E72AEA46343DF1CB67EAD3D485328A4700FB"
+    }
+  ],
+  "rollback": {
+    "remove_files": [
+      {
+        "path": ".gitignore",
+        "sha256": "C974C6D67E11C53B8C99F7AF1EE6028C40B70755324DE229EBCCAB7C49130244"
+      },
+      {
+        "path": "design-qa.md",
+        "sha256": "757EAD9718078F38A7FB64E4FD664555A92604247989E33E87604F0874C902B8"
+      },
+      {
+        "path": "docs/security-wallets.md",
+        "sha256": "0A8AA63C76B766F12BBF671A83B5D8B4CA2EE1DAB81C82146A572AB294E86D0F"
+      },
+      {
+        "path": "marketplace_features.py",
+        "sha256": "699D73E1FD0DC4201B4535F5FF6E4C0FFF51C0F832179C5C8C06989DBB925839"
+      },
+      {
+        "path": "static/assets/bitcoin-bag.webp",
+        "sha256": "CAE7BA34AD1FF496C4D8E4186806A1C61AB225F7CCE1AC53DD163377D41CEE31"
+      },
+      {
+        "path": "static/assets/bitcoin-cart.webp",
+        "sha256": "BB81D62A72D07D7686D43FEE4FC533A4D7DCC41125AC29ECC21D7211197DC00F"
+      },
+      {
+        "path": "static/assets/bitcoin-crystal.webp",
+        "sha256": "22054B7C7E8A2ECDBAFDF6F8EB978DAC088E523F13BD9FCEDAE58F1B78343370"
+      },
+      {
+        "path": "static/assets/blue-brush.webp",
+        "sha256": "A75D61B4C0A71F662CD13206ABF082A3B85968E7A9C013B15682F2885A344B43"
+      },
+      {
+        "path": "static/assets/products/backpack.webp",
+        "sha256": "016F97946D6004363557AF132A4053FC7E05553BE49FBCE4ED81865341663919"
+      },
+      {
+        "path": "static/assets/products/bottle.webp",
+        "sha256": "1084CD5BEBB3093CC596F0A350CADA04A1F5A116F983B6157D82708243074E93"
+      },
+      {
+        "path": "static/assets/products/headset.webp",
+        "sha256": "BB3589721CBD351B1CBA8AC4E5DBEBEBB36F55407601F8E6BC1A78E6980137C3"
+      },
+      {
+        "path": "static/assets/products/keyboard.webp",
+        "sha256": "6D96FA0B0CC5EEACAD68449E511AC4F9999F64DCA4EFB8908B196FD4C6B4A159"
+      },
+      {
+        "path": "static/assets/products/lamp.webp",
+        "sha256": "BF7DEA3DF6A00FBB620547B12344CA8EB4615F26115B38ECCD452A28A736E533"
+      },
+      {
+        "path": "static/assets/products/organizer.webp",
+        "sha256": "72915338DF14DF9F3E2112C92C9EF68CF3053294BF064BD79BF423728E518A09"
+      },
+      {
+        "path": "static/assets/products/ssd.webp",
+        "sha256": "86400255AA65585DC89EAFCF6BC9546305C778B53DF201CA6ED80AC4ADB1545F"
+      },
+      {
+        "path": "static/assets/products/watch.webp",
+        "sha256": "08528F0F525F9E99168685433462ED74CFB0F2CD2CDEB561F8095A581FEADECF"
+      },
+      {
+        "path": "static/assets/seller-parcel.webp",
+        "sha256": "EE647873D98F2A14D74BA0AA1330A0F1C8AB99D0A1CF4AEA482321DEECECF44E"
+      },
+      {
+        "path": "static/css/auth.css",
+        "sha256": "013BD388E65FDC1CA5B1F5861B8A46EB88227E61810941370EF6CFB0E4B42C43"
+      },
+      {
+        "path": "static/css/bitloja.css",
+        "sha256": "B498BFE3F45063254D9293BBB088D1BB471801BA9C49E2B67089A543F333DA98"
+      },
+      {
+        "path": "static/css/cart.css",
+        "sha256": "B2ABB33429B31F779F4E2E4E05CCE78F9EDD87E4B5BDD9601ADC603D7775EB32"
+      },
+      {
+        "path": "static/css/dashboard.css",
+        "sha256": "967D3077D2BCED0E80DD22FA5D644F5632ED09479FF059E17ED52EF46B3172BB"
+      },
+      {
+        "path": "static/css/glass.css",
+        "sha256": "FD6211E99A986771F2FF577AC8D3907C1A80EBFF24A979C2AEFF1C61B0385423"
+      },
+      {
+        "path": "static/fonts/ARCHIVO-OFL.txt",
+        "sha256": "108B4E57C9C796D3D38D0428CA7EE39DE47AD93187302718D9B2D8864B9B716B"
+      },
+      {
+        "path": "static/fonts/CAVEAT-OFL.txt",
+        "sha256": "1F9D81D094273D82F3898A1EE8B598A717D050ECBF5FF7BEDE105B704880157B"
+      },
+      {
+        "path": "static/fonts/JETBRAINS-MONO-OFL.txt",
+        "sha256": "B2FE5E8987594E9FFD1D2CA52A2F5D73EB8335243893C5D6254B5AD69269591D"
+      },
+      {
+        "path": "static/fonts/archivo-variable-latin.woff2",
+        "sha256": "8F704806DBEDEAAECA334B11EC348BC3AC3A439D6431544B3AFB54F534EE4967"
+      },
+      {
+        "path": "static/fonts/bootstrap-icons.woff2",
+        "sha256": "476ADF42B40325098FCFA8B36AB3E769186BB4F6CE6A249753E2E1A9C22BF99E"
+      },
+      {
+        "path": "static/fonts/caveat-variable-latin.woff2",
+        "sha256": "891951DF5E8B5B0F0BC760D31375405E795C666B5ADD70437DE12D4A6482B33F"
+      },
+      {
+        "path": "static/fonts/jetbrains-mono-variable-latin.woff2",
+        "sha256": "18BE452724BFDC236C074CA94A249A7F41A86752C7D04AB258CE9ED5651F6A7E"
+      },
+      {
+        "path": "static/icons/LICENSE",
+        "sha256": "0FB3E11BD57E896C5A512AFD64864D28A37DE45D19835016C87CA1AD19EAD969"
+      },
+      {
+        "path": "static/icons/bootstrap-icons.css",
+        "sha256": "95FB573D41FD42DEE8ABB0E64F4B6CEA929C7BC2E3E00E975648BAC7F1EA1C8B"
+      },
+      {
+        "path": "static/js/bitloja.js",
+        "sha256": "69897EA3F4FBD95534E1B357B88304B14C4B72526A355392F64809BF9E97C115"
+      },
+      {
+        "path": "tests/test_marketplace.py",
+        "sha256": "C6CB00F78DAA4F4C971CC07D0719E72AEA46343DF1CB67EAD3D485328A4700FB"
+      }
+    ],
+    "restore_files": [
+      {
+        "path": "README.md",
+        "sha256": "2E054A4C5C613326EEA26FDE2242F7BD9AA7BE22FF1DD3B2F9EB30E279B0B807",
+        "source": "baseline/README.md"
+      },
+      {
+        "path": "app.py",
+        "sha256": "815DD183130DDB0A645D3425AB902C73C477F6D3A809526F3E3F04CAA7E02172",
+        "source": "baseline/app.py"
+      },
+      {
+        "path": "env.example",
+        "sha256": "332076C745F7AD84CC8273B813DC97648396F82BCD84E6DE0F6E353E39F211A1",
+        "source": "baseline/env.example"
+      },
+      {
+        "path": "requirements.txt",
+        "sha256": "5325CD2309255D509584F9CBD949F04BD20C0522470030D8AEA1719A9F680F8F",
+        "source": "baseline/requirements.txt"
+      },
+      {
+        "path": "templates/index.html",
+        "sha256": "EB58BEBE324C13D701489867022BD2AEEA95AA407AFDBECCA247BB5F62A6DFDD",
+        "source": "baseline/templates/index.html"
+      }
+    ]
+  },
+  "schema_version": 2
+}

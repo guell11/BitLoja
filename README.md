@@ -49,27 +49,49 @@ A arquitetura financeira separa claramente:
 
 ## 🖼️ Interface
 
-### Página inicial
+As imagens abaixo mostram a experiência reformulada em outubro de 2026, com telas reais do projeto em modo de demonstração. Quantidades, pagamentos, saldo e disponibilidade variam conforme os dados e a configuração do servidor.
 
-![Página inicial da BitLoja](docs/screenshots/home.png)
+### Vitrine e descoberta
 
-### Página de produto
+![Nova página inicial com vitrine de produtos e identidade visual azul da BitLoja](docs/screenshots/home-new.jpg)
 
-![Página de produto da BitLoja](docs/screenshots/product.png)
+| Produto | Como funciona |
+|---|---|
+| ![Página de detalhes de produto](docs/screenshots/product-new.jpg) | ![Etapas da compra e perguntas frequentes](docs/screenshots/how-it-works.jpg) |
 
-### Painel administrativo
+A home apresenta uma vitrine de produtos e lojas, com chamadas para explorar o catálogo ou abrir uma loja. O catálogo inclui **busca**, **categorias**, **filtro por preço e estoque** e ordenação por destaque, vendas, avaliações ou preço. A página do produto reúne informações do item, vendedor e opções de compra; a seção **Como funciona** explica carrinho, checkout, pagamento, entrega e as diferenças entre escrow on-chain e Lightning.
 
-![Painel administrativo da BitLoja](docs/screenshots/admin.png)
+### Compra e acompanhamento
 
-O frontend utiliza:
+| Carrinho | Pedidos |
+|---|---|
+| ![Carrinho com produtos e resumo da compra](docs/screenshots/cart-new.jpg) | ![Área de pedidos e acompanhamento](docs/screenshots/orders-new.jpg) |
 
-- bento grid;
-- glassmorphism e blur;
-- cartões com bordas arredondadas;
-- banners responsivos;
-- ícones SVG;
-- navegação SPA em JavaScript puro;
-- layout adaptado para desktop e dispositivos móveis.
+| Notificações | Carrinho no celular |
+|---|---|
+| ![Central de notificações](docs/screenshots/notifications-new.jpg) | ![Carrinho responsivo no celular](docs/screenshots/cart-mobile-new.jpg) |
+
+O carrinho permite ajustar quantidades e remover itens; o checkout separa pedidos por loja, apresenta o método de pagamento disponível e acompanha o estado retornado pelo servidor. Na área da conta, compradores consultam histórico de pedidos, status de pagamento, rastreio, mensagens, disputas e avaliações elegíveis. A caixa de notificações concentra atualizações da conta e permite marcar mensagens como lidas.
+
+### Painéis e Bitcoin
+
+| Administração | Vendedor |
+|---|---|
+| ![Painel administrativo reformulado](docs/screenshots/admin-new.jpg) | ![Painel do vendedor com visão operacional](docs/screenshots/seller-new.jpg) |
+
+| Carteira pessoal | Operações Bitcoin |
+|---|---|
+| ![Painel de carteira Bitcoin](docs/screenshots/wallet-new.jpg) | ![Painel de operações e custódia Bitcoin](docs/screenshots/bitcoin-panel-new.jpg) |
+
+![Carteira Bitcoin adaptada para celular](docs/screenshots/wallet-mobile-new.jpg)
+
+O **vendedor** gerencia produtos, estoque, loja, pedidos e atualizações de entrega. O **administrador** encontra visão operacional, liquidações, tesouraria, disputas, usuários/lojas e auditoria. As áreas financeiras apresentam estado da rede, carteira pessoal watch-only, transferências por PSBT e operações de custódia conforme as permissões e a configuração do ambiente. Em `BTC_MODE=demo`, operações reais de carteira ficam indisponíveis.
+
+### Identidade visual e navegação
+
+![Janela de autenticação com o visual renovado](docs/screenshots/login-new.jpg)
+
+O frontend usa **Archivo** e **JetBrains Mono**, ilustrações WebP, ícones Bootstrap, superfícies translúcidas, tons de azul e marinho e composição responsiva. A navegação é uma SPA em JavaScript puro, com telas específicas para catálogo, checkout, dashboards e finanças. Os estilos estão separados em `static/css/` (`bitloja.css`, `auth.css`, `dashboard.css`, `cart.css`, `glass.css` e `experience.css`), e as interações ficam em `static/js/bitloja.js`.
 
 ---
 
@@ -93,6 +115,9 @@ O frontend utiliza:
 - painel do comprador;
 - painel do vendedor;
 - painel administrativo.
+- filtros combinados de categoria, preço e disponibilidade;
+- ordenação por vendas, avaliação e preço;
+- onboarding visual com página "Como funciona" e FAQ.
 
 </td>
 <td width="50%" valign="top">
@@ -109,6 +134,9 @@ O frontend utiliza:
 - cálculo de comissão;
 - lotes de pagamento para vendedores;
 - logs de auditoria.
+- acompanhamento de entrega com transportadora, código e histórico;
+- caixa de notificações com estado de leitura;
+- avaliações restritas a compras pagas e concluídas.
 
 </td>
 </tr>
@@ -234,7 +262,15 @@ sequenceDiagram
 | Autenticação | Sessão Flask + hash de senha |
 | Segurança web | CSRF, controle de acesso e auditoria |
 
-O backend está concentrado em um único `app.py`. O HTML, CSS e JavaScript ficam em `templates/index.html`, conforme a proposta original do projeto.
+O backend usa `app.py` para o marketplace e `marketplace_features.py` para carteiras watch-only, transferências PSBT, notificações e rastreio. A estrutura HTML fica em `templates/index.html`, os estilos em `static/css/` e a lógica de interface em `static/js/bitloja.js`.
+
+### Carteiras pessoais e transferências
+
+Cada comprador ou vendedor pode vincular carteira Bitcoin própria por descriptors públicos WPKH externo e de troco. O servidor não gera nem guarda chave privada. No modo demonstração, saldo fica em zero e transferências ficam desativadas; valores de pedidos e escrow não aparecem como saldo da carteira pessoal.
+
+Em `BTC_MODE=rpc`, configure a rede e credenciais do Bitcoin Core em ambiente privado; não exponha RPC à internet. O cliente configura a carteira por `POST /api/wallet/setup`, usando descriptors públicos WPKH exclusivos da própria conta e reautenticação por senha. Chaves privadas ficam fora do servidor. Transferências de vendedor viram PSBT, exigem assinatura externa, validação do corpo da transação, reautenticação e confirmação antes de broadcast. `timestamp=now` acompanha apenas fundos recebidos após a configuração; fundos históricos exigem rescan controlado. Avaliações publicadas são verificadas contra pedido pago e concluído; rastreio e notificações são isolados por conta.
+
+O fluxo e as variáveis estão em [`docs/security-wallets.md`](docs/security-wallets.md) e [`env.example`](env.example). A migração usa `DATABASE_PATH`; os testes usam arquivo temporário e não alteram `marketplace.db`.
 
 ---
 
@@ -243,13 +279,25 @@ O backend está concentrado em um único `app.py`. O HTML, CSS e JavaScript fica
 ```text
 bitloja_marketplace_v3/
 ├── app.py
+├── marketplace_features.py
 ├── templates/
 │   └── index.html
+├── static/
+│   ├── css/
+│   ├── js/
+│   │   └── bitloja.js
+│   └── assets/
+├── tests/
+│   └── test_marketplace.py
 ├── docs/
+│   ├── security-wallets.md
 │   └── screenshots/
-│       ├── home.png
-│       ├── product.png
-│       └── admin.png
+│       ├── home-new.jpg
+│       ├── product-new.jpg
+│       ├── how-it-works.jpg
+│       ├── cart-new.jpg
+│       ├── admin-new.jpg
+│       └── ... (demais telas desktop e mobile)
 ├── bitcoin.conf.example
 ├── lnd.conf.example
 ├── env.example
@@ -330,6 +378,8 @@ Depois:
 pip install -r requirements.txt
 python app.py
 ```
+
+Para transferências com Bitcoin Core, ajuste `BTC_MODE`, `BTC_NETWORK`, `BTC_RPC_URL`, `BTC_RPC_USER` e `BTC_RPC_PASSWORD` em variáveis de ambiente e configure descriptors públicos por conta. `BTC_MODE=demo` não simula saldo pessoal nem transmissão de Bitcoin.
 
 ---
 
@@ -579,6 +629,14 @@ Execute o teste integrado:
 ```bash
 python smoke_test.py
 ```
+
+Execute também os testes de backend de carteira, tracking, notificações e avaliações verificadas:
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+Os testes apontam `DATABASE_PATH` para banco temporário. Para verificar a revisão empacotada, use `artifacts/redesign/VERIFICATION.txt`; o script `artifacts/redesign/ROLLBACK.sh` recebe o caminho-alvo explícito e restaura somente arquivos do manifesto, preservando banco e `.env`.
 
 O teste cobre os principais fluxos de demonstração:
 

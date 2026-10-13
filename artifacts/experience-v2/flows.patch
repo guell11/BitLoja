@@ -1,0 +1,1328 @@
+--- a/static/js/bitloja.js
++++ b/static/js/bitloja.js
+@@ -40,7 +40,12 @@
+     admin: null, seller: null, sellerTab: 'overview', adminTab: 'overview',
+     activeView: 'home', currentProduct: null, notifications: [], unreadCount: 0,
+     wallet: null, custody: null, searchOpen: false, mobileMenuOpen: false,
+-    authRole: 'buyer', modalReturnFocus: null
++    authRole: 'buyer', modalReturnFocus: null,
++    checkoutDraft: null, checkoutOrders: [], checkoutPending: false, checkoutStep: 'delivery', checkoutRequest: 0,
++    accountOrders: [], accountSearch: '', accountStatus: 'all', accountRequest: 0, productRequest: 0, sessionVersion: 0,
++    notificationsFilter: 'all', notificationsLoading: false, notificationsWriting: false, notificationsHasMore: false,
++    notificationsCursor: 0, notificationsReturn: null, notificationsRequest: 0,
++    treasuryFilter: 'all', treasurySearch: ''
+   };
+   const config = {
+     btcMode: document.body.dataset.btcMode || 'demo',
+@@ -49,19 +54,18 @@
+   };
+ 
+   function productImage(product) {
+-    const text = `${product?.name || ''} ${product?.category || ''}`.toLocaleLowerCase('pt-BR');
+-    const key = text.includes('head') ? 'headset' : text.includes('tecl') ? 'keyboard' :
+-      text.includes('ssd') || text.includes('hardware') ? 'ssd' :
+-      text.includes('watch') || text.includes('wear') || text.includes('smartwatch') ? 'watch' :
+-      text.includes('moch') || text.includes('backpack') ? 'backpack' :
+-      text.includes('lumin') || text.includes('lamp') ? 'lamp' :
+-      text.includes('garrafa') || text.includes('bottle') ? 'bottle' :
+-      text.includes('organ') || text.includes('grid') ? 'organizer' : '';
++    const text = String(product?.name || '').trim().toLocaleLowerCase('pt-BR');
++    const key = {
++      'headset gamer orbit x': 'headset', 'teclado mecânico neon 75%': 'keyboard',
++      'ssd nvme 1 tb': 'ssd', 'smartwatch pulse pro': 'watch', 'mochila urbana vault': 'backpack',
++      'luminária halo desk': 'lamp', 'garrafa térmica block 750': 'bottle', 'organizador modular grid': 'organizer'
++    }[text];
+     const fallback = productPhotos[key] || '';
+     return safeImage(product?.image_url) || fallback;
+   }
+ 
+   async function api(path, options = {}) {
++    const sessionVersion = state.sessionVersion;
+     const method = String(options.method || 'GET').toUpperCase();
+     const headers = new Headers(options.headers || {});
+     if (method !== 'GET' && method !== 'HEAD') {
+@@ -73,6 +77,7 @@
+     const response = await fetch(path, { credentials: 'same-origin', ...options, method, headers });
+     const type = response.headers.get('content-type') || '';
+     const data = type.includes('application/json') ? await response.json().catch(() => ({})) : await response.text();
++    if (sessionVersion !== state.sessionVersion) throw new Error('Sessão atualizada. Consulte dados novamente.');
+     if (!response.ok) {
+       const message = typeof data === 'object' && data ? data.error || data.message : data;
+       throw new Error(message || `Erro ${response.status}`);
+@@ -81,14 +86,18 @@
+   }
+ 
+   async function download(path, fallbackName) {
++    const sessionVersion = state.sessionVersion;
+     const response = await fetch(path, { credentials: 'same-origin', headers: { 'X-CSRF-Token': state.csrf } });
++    if (sessionVersion !== state.sessionVersion) throw new Error('Sessão atualizada. Consulte dados novamente.');
+     if (!response.ok) {
+       const body = await response.json().catch(() => ({}));
++      if (sessionVersion !== state.sessionVersion) throw new Error('Sessão atualizada. Consulte dados novamente.');
+       throw new Error(body.error || `Erro ${response.status}`);
+     }
+     const disposition = response.headers.get('content-disposition') || '';
+     const matchedName = disposition.match(/filename="?([^";]+)"?/i)?.[1];
+     const blob = await response.blob();
++    if (sessionVersion !== state.sessionVersion) throw new Error('Sessão atualizada. Consulte dados novamente.');
+     const url = URL.createObjectURL(blob);
+     const link = document.createElement('a');
+     link.href = url;
+@@ -169,10 +178,10 @@
+     return dashboardRole;
+   }
+ 
+-  function showView(name) {
++  function showView(name, { scroll = true } = {}) {
+     const target = $(`#${name}View`);
+     if (!target) return;
+-    if (['account', 'wallet', 'custody', 'seller', 'admin'].includes(name) && !state.user) {
++    if (['account', 'wallet', 'custody', 'seller', 'admin', 'checkout', 'notifications'].includes(name) && !state.user) {
+       openAuth('login');
+       return;
+     }
+@@ -200,7 +209,7 @@
+     });
+     $('#siteFooter').classList.toggle('hidden', isDashboard);
+     closeMobileMenu();
+-    window.scrollTo({ top: 0, behavior: 'smooth' });
++    if (scroll) window.scrollTo({ top: 0, behavior: 'instant' });
+     if (name === 'catalog') loadProducts();
+     if (name === 'reviews') loadReviews();
+     if (name === 'account') loadAccount();
+@@ -239,16 +248,54 @@
+     const network = config.btcNetwork || 'testnet';
+     const heroRuntime = $('#heroRuntime');
+     if (heroRuntime) heroRuntime.textContent = `REDE ${network} · ${mode}`;
++    const lightningStatus = $('#howLightningStatus');
++    if (lightningStatus) lightningStatus.textContent = config.lightningMode === 'off' ? 'Lightning está desativado neste servidor.' : `Modo atual: ${config.lightningMode}.`;
++  }
++
++  function resetPrivateState() {
++    state.sessionVersion += 1;
++    state.checkoutRequest += 1;
++    state.notificationsRequest += 1;
++    state.accountRequest += 1;
++    state.checkoutDraft = null;
++    state.checkoutOrders = [];
++    state.checkoutPending = false;
++    state.checkoutStep = 'delivery';
++    state.accountOrders = [];
++    state.accountSearch = '';
++    state.accountStatus = 'all';
++    state.notifications = [];
++    state.notificationsFilter = 'all';
++    state.notificationsLoading = false;
++    state.notificationsWriting = false;
++    state.notificationsHasMore = false;
++    state.notificationsCursor = 0;
++    state.notificationsReturn = null;
++    state.unreadCount = 0;
++    state.cart = null;
++    state.cartCount = 0;
++    state.wallet = null;
++    state.custody = null;
++    state.seller = null;
++    state.admin = null;
++    state.sellerTab = 'overview';
++    state.adminTab = 'overview';
++    state.treasurySearch = '';
++    state.treasuryFilter = 'all';
++    ['accountContent', 'checkoutContent', 'notificationsContent', 'walletContent', 'custodyContent', 'sellerContent', 'adminContent', 'cartLines', 'cartSummary'].forEach(id => $(`#${id}`)?.replaceChildren());
++    $$('[data-financial-name]').forEach(element => { element.textContent = 'Conta'; });
++    $$('[data-financial-email]').forEach(element => { element.textContent = ''; });
+   }
+ 
+   async function bootstrap() {
+     try {
+       const data = await api('/api/bootstrap');
+       state.csrf = data.csrf_token || '';
++      if (idOf(state.user?.id) !== idOf(data.user?.id)) resetPrivateState();
+       state.user = data.user || null;
+       state.cartCount = idOf(data.cart_count);
+       config.btcMode = data.btc_mode || config.btcMode;
+-      config.btcNetwork = data.network || config.btcNetwork;
++      config.btcNetwork = data.btc_network || data.network || config.btcNetwork;
+       config.custodyMode = data.custody_mode || 'demo';
+       config.lightningMode = data.lightning_mode || 'off';
+       config.commissionSigningMode = data.commission_signing_mode || 'offline';
+@@ -499,6 +546,7 @@
+   }
+ 
+   function focusViewDestination(view, previousFocus = null) {
++    if (view === 'how') { focusIfVisible($('#howItWorksTitle')); return; }
+     restoreFocusTarget(previousFocus, $(`#${view}Content`) || $(`#${view}View`));
+   }
+ 
+@@ -535,6 +583,7 @@
+     setAuthPending(form, true);
+     try {
+       const data = await api('/api/login', { method: 'POST', body: payload });
++      resetPrivateState();
+       state.user = data.user || null;
+       state.csrf = data.csrf_token || state.csrf;
+       closeModal({ restoreFocus: false });
+@@ -558,6 +607,7 @@
+     setAuthPending(form, true);
+     try {
+       const data = await api('/api/register', { method: 'POST', body: payload });
++      resetPrivateState();
+       state.user = data.user || null;
+       state.csrf = data.csrf_token || state.csrf;
+       closeModal({ restoreFocus: false });
+@@ -576,6 +626,7 @@
+   async function logout() {
+     try {
+       const data = await api('/api/logout', { method: 'POST', body: '{}' });
++      resetPrivateState();
+       state.user = null;
+       state.cartCount = 0;
+       state.unreadCount = 0;
+@@ -613,9 +664,11 @@
+   async function openProduct(id) {
+     showView('product');
+     const root = $('#productContent');
++    const request = ++state.productRequest;
+     setLoading(root, 'Carregando produto');
+     try {
+       const data = await api(`/api/products/${idOf(id)}`);
++      if (request !== state.productRequest) return;
+       state.currentProduct = data.product;
+       const p = data.product;
+       const store = data.store || {};
+@@ -626,13 +679,17 @@
+       const imageMarkup = image
+         ? `<img class="product-image" data-image-context="detail" data-image-label="${esc(p.name)}" src="${esc(image)}"${fallback && fallback !== image ? ` data-fallback="${esc(fallback)}"` : ''} alt="${esc(p.name)}">`
+         : `<div class="product-image-empty" role="img" aria-label="Imagem não cadastrada para ${esc(p.name)}"><i class="bi bi-image" aria-hidden="true"></i><span>Imagem não cadastrada</span></div>`;
+-      root.innerHTML = `<div class="crumbs"><button class="nav-link" type="button" data-view="home">Início</button><i class="bi bi-chevron-right" aria-hidden="true"></i><button class="nav-link" type="button" data-view="catalog">Produtos</button><i class="bi bi-chevron-right" aria-hidden="true"></i><span>${esc(p.category)}</span></div>
+-        <div class="product-detail-grid"><div class="product-detail-visual">${imageMarkup}</div>
+-        <div class="product-buy-box"><p class="product-store">${esc(store.name || p.store_name || 'Loja')}</p><h1>${esc(p.name)}</h1><div class="detail-rating">${num(p.review_count) ? `${stars(p.rating)} ${num(p.rating).toFixed(1)} · ${idOf(p.review_count)} avaliações` : 'Sem avaliações registradas'}</div><p class="lead">${esc(p.short_description || p.description || '')}</p>${num(p.compare_at_sats) > num(p.price_sats) ? `<p class="old-price">Preço anterior: ₿ ${esc(p.compare_at_btc)}</p>` : ''}<strong class="big-price">₿ ${esc(p.price_btc)}</strong><p class="product-stock">${num(p.stock) > 0 ? `${num(p.stock)} unidades disponíveis` : 'Indisponível'}</p><div class="quantity-row"><label class="sr-only" for="productQty">Quantidade</label><input class="input" id="productQty" type="number" min="1" max="${Math.max(1, num(p.stock))}" value="1"><button class="btn btn-primary" type="button" data-action="add-current-product" data-id="${idOf(p.id)}" ${num(p.stock) < 1 ? 'disabled' : ''}><i class="bi bi-bag-plus" aria-hidden="true"></i> Adicionar ao carrinho</button></div><div class="seller-box"><span><small>Vendido por</small><strong>${esc(store.name || p.store_name || 'Loja')}</strong></span><button class="btn btn-secondary btn-sm" type="button" data-action="open-store" data-id="${idOf(store.id || p.store_id)}">Ver loja</button></div></div></div>
+-        <div class="detail-lower"><section class="panel"><h2>Descrição</h2><p class="preserve-lines">${esc(p.description || p.short_description || 'Sem descrição cadastrada.')}</p></section><section class="panel"><h2>Loja</h2><p>${esc(store.description || 'Sem descrição cadastrada.')}</p><div class="store-details">${num(store.review_count) ? `${stars(store.rating)} ${num(store.rating).toFixed(1)} · ${idOf(store.review_count)} avaliações` : 'Sem avaliações registradas'}${store.tier ? ` · ${esc(store.tier)}` : ''}</div></section></div>
+-        <section class="section"><div class="section-heading"><div><p class="eyebrow"><span class="eyebrow-rule" aria-hidden="true"></span> Compras concluídas</p><h2>Avaliações</h2></div></div>${reviewItems.length ? reviewItems.map(reviewCard).join('') : '<div class="empty">Este produto ainda não possui avaliações.</div>'}</section>
+-        ${similar.length ? `<section class="section"><div class="section-heading"><div><p class="eyebrow"><span class="eyebrow-rule" aria-hidden="true"></span> Catálogo</p><h2>Produtos relacionados</h2></div></div><div class="product-grid">${similar.map(renderProductCard).join('')}</div></section>` : ''}`;
+-    } catch (error) { root.innerHTML = `<div class="notice notice-danger">${esc(error.message)}</div>`; }
++      root.innerHTML = `<nav class="crumbs" aria-label="Caminho do produto"><button class="nav-link" type="button" data-view="home">Início</button><i class="bi bi-chevron-right" aria-hidden="true"></i><button class="nav-link" type="button" data-view="catalog">Produtos</button><i class="bi bi-chevron-right" aria-hidden="true"></i><span>${esc(p.category || 'Produto')}</span></nav>
++        <article class="product-detail-v2 product-detail-grid"><div class="product-gallery"><div class="product-gallery-frame product-detail-visual">${imageMarkup}</div><p class="product-gallery-caption"><i class="bi bi-image" aria-hidden="true"></i> ${image ? 'Imagem do produto' : 'Vendedor não cadastrou imagem disponível'}</p><div class="product-specs"><dl><div><dt>Categoria</dt><dd>${esc(p.category || 'Não informada')}</dd></div><div><dt>Referência</dt><dd>#${idOf(p.id)}</dd></div><div><dt>Estoque</dt><dd>${idOf(p.stock)} ${idOf(p.stock) === 1 ? 'unidade' : 'unidades'}</dd></div><div><dt>Pagamento</dt><dd>Bitcoin · ${esc(config.btcNetwork)}</dd></div></dl></div></div>
++        <div class="product-purchase product-buy-box"><p class="product-store">${esc(store.name || p.store_name || 'Loja')}</p><h1 tabindex="-1">${esc(p.name)}</h1><div class="detail-rating">${num(p.review_count) ? `${stars(p.rating)} <span>${num(p.rating).toFixed(1)} · ${idOf(p.review_count)} avaliações</span>` : '<span>Sem avaliações registradas</span>'}</div><p class="lead">${esc(p.short_description || p.description || 'Veja informações do vendedor abaixo.')}</p><div class="product-price-block">${num(p.compare_at_sats) > num(p.price_sats) ? `<span class="old-price">₿ ${esc(p.compare_at_btc)}</span>` : ''}<strong class="big-price">₿ ${esc(p.price_btc)}</strong><span class="product-sats">${idOf(p.price_sats).toLocaleString('pt-BR')} sats</span></div><p class="product-stock ${num(p.stock) < 1 ? 'out' : ''}"><i class="bi ${num(p.stock) > 0 ? 'bi-check-circle' : 'bi-dash-circle'}" aria-hidden="true"></i> ${num(p.stock) > 0 ? `${idOf(p.stock)} unidades disponíveis` : 'Produto indisponível'}</p>
++        <div class="quantity-row"><div class="field"><label for="productQty">Quantidade</label><div class="qty-control"><button type="button" data-action="product-qty" data-delta="-1" aria-label="Diminuir quantidade" ${num(p.stock) < 1 ? 'disabled' : ''}>−</button><input class="input" id="productQty" type="number" min="1" max="${Math.max(1, idOf(p.stock))}" step="1" value="1" ${num(p.stock) < 1 ? 'disabled' : ''}><button type="button" data-action="product-qty" data-delta="1" aria-label="Aumentar quantidade" ${num(p.stock) < 1 ? 'disabled' : ''}>+</button></div></div></div><div class="product-purchase-actions"><button class="btn btn-primary" type="button" data-action="add-current-product" data-id="${idOf(p.id)}" ${num(p.stock) < 1 ? 'disabled' : ''}><i class="bi bi-bag-plus" aria-hidden="true"></i> Adicionar ao carrinho</button><button class="btn btn-secondary" type="button" data-action="buy-current-product" data-id="${idOf(p.id)}" ${num(p.stock) < 1 ? 'disabled' : ''}>Comprar agora <i class="bi bi-arrow-right" aria-hidden="true"></i></button></div>
++        <p class="product-payment-note"><i class="bi bi-currency-bitcoin" aria-hidden="true"></i> Escrow on-chain 2-de-3${config.lightningMode !== 'off' ? ' ou Lightning custodial' : ''}. Confirme opção no checkout.</p><div class="seller-box"><span><small>Vendido por</small><strong>${esc(store.name || p.store_name || 'Loja')}</strong>${num(store.review_count) ? `<small>${num(store.rating).toFixed(1)} · ${idOf(store.review_count)} avaliações da loja</small>` : ''}</span><button class="btn btn-secondary btn-sm" type="button" data-action="open-store" data-id="${idOf(store.id || p.store_id)}">Ver loja</button></div></div></article>
++        <nav class="product-detail-tabs" aria-label="Informações do produto"><button class="text-link" type="button" data-product-section="productDescriptionSection">Descrição</button><button class="text-link" type="button" data-product-section="productStoreSection">Vendedor</button><button class="text-link" type="button" data-product-section="productReviewsSection">Avaliações (${reviewItems.length})</button></nav>
++        <div class="detail-lower"><section class="panel product-detail-section" id="productDescriptionSection" tabindex="-1"><p class="eyebrow">INFORMAÇÕES DO VENDEDOR</p><h2>Descrição</h2><p class="preserve-lines">${esc(p.description || p.short_description || 'Sem descrição cadastrada.')}</p></section><section class="panel product-detail-section" id="productStoreSection" tabindex="-1"><p class="eyebrow">QUEM VENDE</p><h2>${esc(store.name || p.store_name || 'Loja')}</h2><p>${esc(store.description || 'Sem descrição cadastrada.')}</p><div class="store-details">${num(store.review_count) ? `${stars(store.rating)} ${num(store.rating).toFixed(1)} · ${idOf(store.review_count)} avaliações` : 'Sem avaliações registradas'}${store.tier ? ` · ${esc(store.tier)}` : ''}</div></section></div>
++        <section class="section product-detail-section" id="productReviewsSection" tabindex="-1"><div class="section-heading"><div><p class="eyebrow"><span class="eyebrow-rule" aria-hidden="true"></span> Compras concluídas</p><h2>Avaliações do produto</h2></div></div><div class="product-review-list">${reviewItems.length ? reviewItems.map(reviewCard).join('') : '<div class="empty">Este produto ainda não possui avaliações. Compradores podem avaliar após concluir o pedido.</div>'}</div></section>
++        ${similar.length ? `<section class="section"><div class="section-heading"><div><p class="eyebrow"><span class="eyebrow-rule" aria-hidden="true"></span> Catálogo</p><h2>Produtos relacionados</h2></div><button class="text-link" type="button" data-view="catalog">Ver catálogo</button></div><div class="product-grid">${similar.map(renderProductCard).join('')}</div></section>` : ''}`;
++      focusUpdatedContent(root, null);
++    } catch (error) { if (request === state.productRequest) root.innerHTML = `<div class="notice notice-danger">${esc(error.message)}</div><button class="btn btn-secondary" type="button" data-action="open-product" data-id="${idOf(id)}">Tentar novamente</button>`; }
+   }
+ 
+   function reviewCard(review) {
+@@ -654,13 +711,30 @@
+   }
+ 
+   async function addToCart(productId, quantity = 1) {
+-    if (!state.user) { openAuth('login'); return; }
++    if (!state.user) { openAuth('login'); return false; }
+     try {
+       const data = await api('/api/cart/add', { method: 'POST', body: JSON.stringify({ product_id: idOf(productId), quantity: Math.max(1, idOf(quantity)) }) });
+       if (data.count !== undefined) state.cartCount = idOf(data.count); else state.cartCount += Math.max(1, idOf(quantity));
+       renderSession();
+       toast(data.message || 'Produto adicionado ao carrinho.');
+-    } catch (error) { toast(error.message, 'error'); }
++      return true;
++    } catch (error) { toast(error.message, 'error'); return false; }
++  }
++
++  async function addCurrentProduct(button, checkout = false) {
++    const quantity = $('#productQty');
++    if (!quantity?.reportValidity() || button.disabled || quantity.dataset.pending === 'true') return;
++    quantity.dataset.pending = 'true';
++    const controls = $$('.product-purchase-actions button');
++    controls.forEach(control => { control.disabled = true; });
++    try {
++      if (await addToCart(button.dataset.id, quantity.value)) {
++        if (checkout) await openCheckout();
++      }
++    } finally {
++      quantity.dataset.pending = 'false';
++      controls.forEach(control => { if (control.isConnected) control.disabled = false; });
++    }
+   }
+ 
+   function groupCartItems(items) {
+@@ -715,23 +789,171 @@
+     } catch (error) { toast(error.message, 'error'); }
+   }
+ 
+-  function openCheckout() {
++  function saveCheckoutDraft() {
++    const form = $('#checkoutForm');
++    if (form && !state.checkoutPending) state.checkoutDraft = Object.fromEntries(new FormData(form));
++    return state.checkoutDraft || {};
++  }
++
++  function checkoutSummary(data) {
++    const items = Array.isArray(data.items) ? data.items : [];
++    const stores = groupCartItems(items);
++    return `<p class="summary-label">Resumo da compra</p><h2>${items.reduce((total, item) => total + idOf(item.quantity), 0)} itens · ${stores.size} ${stores.size === 1 ? 'loja' : 'lojas'}</h2>
++      <div class="checkout-summary-items">${items.map(item => `<div class="summary-line"><span>${esc(item.name)}<small>${idOf(item.quantity)} × ₿ ${esc(item.price_btc || item.unit_price_btc)}</small></span><strong>₿ ${esc(item.line_total_btc)}</strong></div>`).join('')}</div>
++      <div class="summary-total"><span>Total em Bitcoin</span><strong>₿ ${esc(data.total_btc)}</strong></div><p>Um pedido por loja. Preços e estoque são validados ao criar os pedidos.</p><small>Rede ${esc(config.btcNetwork)} · modo ${esc(config.btcMode)}. Taxas de rede são definidas pela carteira no pagamento.</small>`;
++  }
++
++  function checkoutReviewHtml(draft) {
++    return `<div class="checkout-line"><span>Destinatário</span><strong>${esc(draft.shipping_name || 'Não informado')}</strong></div>
++      <div class="checkout-line"><span>Entrega</span><strong>${esc([draft.shipping_address, draft.shipping_city, draft.shipping_state, draft.shipping_zip].filter(Boolean).join(', ') || 'Não informada')}</strong></div>
++      <div class="checkout-line"><span>Pagamento</span><strong>${draft.payment_method === 'lightning' ? 'Lightning · custodial' : 'Escrow on-chain · 2 de 3'}</strong></div>
++      <div class="checkout-line"><span>Reembolso</span><code>${esc(draft.buyer_refund_address || 'Não informado')}</code></div>
++      <p>O próximo passo cria os pedidos e apresenta os endereços ou invoices. Criar pedidos não confirma pagamento.</p>`;
++  }
++
++  function renderCheckout(data) {
++    const root = $('#checkoutContent');
++    const draft = state.checkoutDraft || {
++      payment_method: 'onchain_multisig', buyer_pubkey: state.user.bitcoin_pubkey || '', shipping_name: state.user.name || ''
++    };
++    if (draft.payment_method === 'lightning' && config.lightningMode === 'off') draft.payment_method = 'onchain_multisig';
++    const field = (id, name, label, autocomplete, maxLength) => `<div class="field"><label for="${id}">${label}</label><input class="input" id="${id}" name="${name}" autocomplete="${autocomplete}" maxlength="${maxLength}" value="${esc(draft[name] || '')}" required></div>`;
++    root.innerHTML = `<div class="checkout-layout"><div class="checkout-main"><form id="checkoutForm" novalidate>
++      <ol class="checkout-steps" aria-label="Etapas do checkout"><li data-checkout-step="delivery"><span>1</span>Entrega</li><li data-checkout-step="payment"><span>2</span>Pagamento</li><li data-checkout-step="review"><span>3</span>Revisão</li></ol>
++      <section class="panel checkout-panel" data-checkout-panel="delivery" aria-labelledby="checkoutDeliveryTitle"><p class="eyebrow">01 / ENTREGA</p><h2 id="checkoutDeliveryTitle" tabindex="-1">Para onde vai seu pedido?</h2><p>O endereço acompanha todos os pedidos desta compra.</p><div class="checkout-field-grid grid-2">${field('shippingName', 'shipping_name', 'Nome do destinatário', 'name', 120)}${field('shippingZip', 'shipping_zip', 'CEP', 'postal-code', 20)}</div>${field('shippingAddress', 'shipping_address', 'Endereço completo', 'street-address', 220)}<div class="checkout-field-grid grid-2">${field('shippingCity', 'shipping_city', 'Cidade', 'address-level2', 100)}${field('shippingState', 'shipping_state', 'Estado', 'address-level1', 40)}</div><button class="btn btn-primary" type="button" data-action="checkout-step" data-step="payment">Escolher pagamento <i class="bi bi-arrow-right" aria-hidden="true"></i></button></section>
++      <section class="panel checkout-panel hidden" data-checkout-panel="payment" aria-labelledby="checkoutPaymentTitle"><p class="eyebrow">02 / BITCOIN</p><h2 id="checkoutPaymentTitle" tabindex="-1">Escolha caminho de pagamento</h2><fieldset class="field"><legend>Meio de pagamento</legend><label class="method-card"><input type="radio" name="payment_method" value="onchain_multisig" ${draft.payment_method !== 'lightning' ? 'checked' : ''}><span><strong>Escrow on-chain 2-de-3</strong><small>Comprador, vendedor e mediador. Liberação ou devolução exige duas assinaturas.</small></span></label><label class="method-card"><input type="radio" name="payment_method" value="lightning" ${draft.payment_method === 'lightning' ? 'checked' : ''} ${config.lightningMode === 'off' ? 'disabled' : ''}><span><strong>Lightning</strong><small>${config.lightningMode === 'off' ? 'Desativado neste servidor.' : `Custodial pelo nó da plataforma · modo ${esc(config.lightningMode)}.`}</small></span></label></fieldset>
++      <div id="multisigCheckoutFields" class="${draft.payment_method === 'lightning' ? 'hidden' : ''}"><div class="field"><label for="buyerPubkey">Sua chave pública Bitcoin comprimida</label><input class="input" id="buyerPubkey" name="buyer_pubkey" value="${esc(draft.buyer_pubkey || '')}" pattern="(02|03)[0-9a-fA-F]{64}" maxlength="66" placeholder="02/03 + 64 caracteres hex" spellcheck="false" autocomplete="off"><small>Informe chave pública ou use carteira watch-only já configurada. A chave privada fica na sua carteira.</small></div></div>
++      <div class="field"><label for="refundAddress">Endereço BTC para reembolso</label><input class="input" id="refundAddress" name="buyer_refund_address" value="${esc(draft.buyer_refund_address || '')}" maxlength="160" placeholder="Endereço compatível com ${esc(config.btcNetwork)}" spellcheck="false" autocomplete="off"><small>Usado em propostas de devolução e pagamentos excedentes.</small></div><div class="actions"><button class="btn btn-secondary" type="button" data-action="checkout-step" data-step="delivery">Voltar à entrega</button><button class="btn btn-primary" type="button" data-action="checkout-step" data-step="review">Revisar pedidos <i class="bi bi-arrow-right" aria-hidden="true"></i></button></div></section>
++      <section class="panel checkout-panel checkout-review hidden" data-checkout-panel="review" aria-labelledby="checkoutReviewTitle"><p class="eyebrow">03 / REVISÃO</p><h2 id="checkoutReviewTitle" tabindex="-1">Confira antes de criar</h2><div id="checkoutReview">${checkoutReviewHtml(draft)}</div><div class="actions"><button class="btn btn-secondary" type="button" data-action="checkout-step" data-step="payment">Editar pagamento</button><button class="btn btn-primary" type="submit"><i class="bi bi-lock" aria-hidden="true"></i> Criar pedidos em Bitcoin</button></div></section>
++      <p class="checkout-feedback" id="checkoutFeedback" role="status" aria-live="polite"></p></form></div><aside class="panel checkout-summary" aria-label="Resumo do checkout">${checkoutSummary(data)}</aside></div>`;
++    setCheckoutStep(state.checkoutStep, false);
++  }
++
++  function setCheckoutStep(step, focus = true) {
++    const steps = ['delivery', 'payment', 'review'];
++    if (!steps.includes(step) || state.checkoutPending) return;
++    const form = $('#checkoutForm');
++    if (!form) return;
++    const draft = saveCheckoutDraft();
++    if (focus && steps.indexOf(step) > steps.indexOf(state.checkoutStep) && !validateCheckoutPanel(state.checkoutStep)) return;
++    state.checkoutStep = step;
++    $$('[data-checkout-panel]', form).forEach(panel => panel.classList.toggle('hidden', panel.dataset.checkoutPanel !== step));
++    $$('[data-checkout-step]', form).forEach(item => {
++      const current = item.dataset.checkoutStep === step;
++      item.classList.toggle('current', current);
++      item.classList.toggle('is-complete', steps.indexOf(item.dataset.checkoutStep) < steps.indexOf(step));
++      if (current) item.setAttribute('aria-current', 'step'); else item.removeAttribute('aria-current');
++    });
++    $('#checkoutReview').innerHTML = checkoutReviewHtml(draft);
++    if (focus) focusIfVisible($(`[data-checkout-panel="${step}"] h2`, form));
++  }
++
++  function validateCheckoutPanel(step) {
++    const panel = $(`[data-checkout-panel="${step}"]`, $('#checkoutForm'));
++    const controls = panel ? $$('input, select, textarea', panel) : [];
++    const lightning = $('#checkoutForm input[name="payment_method"]:checked')?.value === 'lightning';
++    const invalid = controls.find(input => !(input.id === 'buyerPubkey' && lightning) && !input.disabled && !input.checkValidity());
++    if (!invalid) return true;
++    setCheckoutStep(step, false);
++    invalid.reportValidity();
++    invalid.focus();
++    return false;
++  }
++
++  async function openCheckout() {
+     if (!state.user) { openAuth('login'); return; }
+-    const key = state.user.bitcoin_pubkey || '';
+-    const body = `<div class="notice notice-info">Cada loja gera um pedido separado. On-chain usa escrow 2-de-3; Lightning fica identificado como custodial.</div><form id="checkoutForm"><fieldset class="field"><legend>Meio de pagamento</legend><label class="method-card"><input type="radio" name="payment_method" value="onchain_multisig" checked><span><strong>Escrow on-chain 2-de-3</strong><small>Comprador, vendedor e mediador; duas assinaturas decidem o destino.</small></span></label><label class="method-card"><input type="radio" name="payment_method" value="lightning" ${config.lightningMode === 'off' ? 'disabled' : ''}><span><strong>Lightning Express</strong><small>${config.lightningMode === 'off' ? 'Desativado neste servidor.' : 'Pagamento custodial pelo nó Lightning da plataforma.'}</small></span></label></fieldset><div id="multisigCheckoutFields"><div class="field"><label for="buyerPubkey">Sua chave pública Bitcoin comprimida</label><input class="input" id="buyerPubkey" name="buyer_pubkey" value="${esc(key)}" placeholder="Chave pública comprimida"><small>A chave privada permanece na sua carteira.</small></div></div><div class="grid-2"><div class="field"><label for="shippingName">Nome do destinatário</label><input class="input" id="shippingName" name="shipping_name" autocomplete="name" required value="${esc(state.user.name || '')}"></div><div class="field"><label for="shippingZip">CEP</label><input class="input" id="shippingZip" name="shipping_zip" autocomplete="postal-code" required></div></div><div class="field"><label for="shippingAddress">Endereço completo</label><input class="input" id="shippingAddress" name="shipping_address" autocomplete="street-address" required></div><div class="grid-2"><div class="field"><label for="shippingCity">Cidade</label><input class="input" id="shippingCity" name="shipping_city" autocomplete="address-level2" required></div><div class="field"><label for="shippingState">Estado</label><input class="input" id="shippingState" name="shipping_state" autocomplete="address-level1" required></div></div><div class="field"><label for="refundAddress">Endereço BTC para reembolso</label><input class="input" id="refundAddress" name="buyer_refund_address" placeholder="Endereço compatível com ${esc(config.btcNetwork)}"><small>Usado em propostas de devolução e pagamentos excedentes.</small></div><button class="btn btn-primary" type="submit">Criar pedidos</button></form>`;
+-    openModal('Finalizar compra', body, true);
++    if (state.checkoutPending) { showView('checkout'); return; }
++    saveCheckoutDraft();
++    closeModal({ restoreFocus: false });
++    showView('checkout');
++    const root = $('#checkoutContent');
++    const request = ++state.checkoutRequest;
++    const sessionVersion = state.sessionVersion;
++    setLoading(root, 'Confirmando itens do carrinho');
++    try {
++      const data = await api('/api/cart');
++      if (request !== state.checkoutRequest || sessionVersion !== state.sessionVersion || !state.user) return;
++      state.cart = data;
++      state.cartCount = idOf(data.count);
++      renderSession();
++      if (!Array.isArray(data.items) || !data.items.length) {
++        root.innerHTML = '<div class="cart-empty"><i class="bi bi-bag" aria-hidden="true"></i><h2>Carrinho vazio</h2><p>Adicione produtos antes de iniciar checkout.</p><button class="btn btn-primary" type="button" data-action="catalog">Explorar produtos</button></div>';
++      } else renderCheckout(data);
++      focusUpdatedContent(root, null);
++    } catch (error) {
++      if (request !== state.checkoutRequest || sessionVersion !== state.sessionVersion) return;
++      root.innerHTML = `<div class="notice notice-danger" role="alert">${esc(error.message)}</div><button class="btn btn-secondary" type="button" data-action="checkout">Tentar novamente</button>`;
++      focusUpdatedContent(root, null);
++    }
++  }
++
++  function renderCheckoutOrders(message = 'Pedidos criados. O pagamento ainda precisa ser confirmado.') {
++    const cards = state.checkoutOrders.map(order => {
++      const lightning = order.payment_method === 'lightning';
++      const value = lightning ? order.lightning_invoice : order.payment_address;
++      return `<article class="panel checkout-payment"><div class="checkout-order-head"><div><small>${esc(order.store_name || 'Pedido')}</small><h2>${esc(order.reference)}</h2></div>${statusTag(order.status || 'awaiting_payment')}</div><strong class="big-price">₿ ${esc(order.total_btc)}</strong><span class="mode-tag">${lightning ? 'Lightning · custodial' : 'Escrow on-chain · 2 de 3'}</span><p>${lightning ? 'Pague invoice com carteira Lightning compatível.' : `Envie valor para endereço deste pedido na rede ${esc(config.btcNetwork)}.`}</p><div class="keybox">${esc(value || 'Dados de pagamento não retornados pelo servidor. Abra seus pedidos para consultar.')}</div><div class="actions">${value ? `<button class="btn btn-primary" type="button" data-action="copy" data-value="${esc(value)}">Copiar ${lightning ? 'invoice' : 'endereço escrow'}</button>` : ''}<button class="btn btn-secondary" type="button" data-action="checkout-sync" data-id="${idOf(order.id)}" ${state.checkoutPending ? 'disabled' : ''}>Consultar pagamento</button></div>${order.txid ? `<p class="order-txid">TXID ${esc(order.txid)}</p>` : ''}</article>`;
++    }).join('');
++    $('#checkoutContent').innerHTML = `<div class="checkout-complete"><div class="notice notice-info" role="status">${esc(message)}</div><ol class="checkout-steps" aria-label="Estado da compra"><li class="is-complete"><span>1</span>Dados revisados</li><li class="is-complete"><span>2</span>Pedidos criados</li><li class="current" aria-current="step"><span>3</span>Pagamento por pedido</li></ol>${cards || '<div class="empty">Consulte seus pedidos para ver dados de pagamento.</div>'}<p>Confirmação de pagamento vem do servidor. Acompanhe entrega, PSBTs e avaliações em seus pedidos.</p><div class="actions"><button class="btn btn-secondary" type="button" data-action="catalog">Continuar comprando</button><button class="btn btn-primary" type="button" data-action="checkout-orders">Acompanhar pedidos</button></div></div>`;
+   }
+ 
+   async function submitCheckout(event) {
+     event.preventDefault();
+-    try {
+-      const data = await api('/api/checkout', { method: 'POST', body: JSON.stringify(Object.fromEntries(new FormData(event.currentTarget))) });
++    if (state.checkoutPending) return;
++    const form = event.currentTarget;
++    const sessionVersion = state.sessionVersion;
++    saveCheckoutDraft();
++    if (!validateCheckoutPanel('delivery') || !validateCheckoutPanel('payment')) return;
++    if (state.checkoutStep !== 'review') { setCheckoutStep('review'); return; }
++    const payload = JSON.stringify(Object.fromEntries(new FormData(form)));
++    state.checkoutPending = true;
++    form.setAttribute('aria-busy', 'true');
++    $$('button', form).forEach(button => { button.disabled = true; });
++    $('#checkoutFeedback').textContent = 'Criando pedidos. Aguarde resposta do servidor.';
++    try {
++      const data = await api('/api/checkout', { method: 'POST', body: payload });
++      if (sessionVersion !== state.sessionVersion) return;
+       state.cartCount = 0;
++      state.cart = null;
++      state.checkoutDraft = null;
++      state.checkoutStep = 'delivery';
++      state.checkoutOrders = Array.isArray(data.orders) ? data.orders : [];
+       renderSession();
+-      const orders = Array.isArray(data.orders) ? data.orders : [];
+-      const cards = orders.map(order => `<article class="checkout-order"><div class="checkout-order-head"><strong>${esc(order.reference)}</strong>${statusTag(order.status || 'awaiting_payment')}</div><p>₿ ${esc(order.total_btc)}</p><span class="mode-tag">${order.payment_method === 'lightning' ? 'Lightning custodial' : 'Escrow on-chain 2-de-3'}</span><div class="keybox">${esc(order.payment_method === 'lightning' ? order.lightning_invoice : order.payment_address)}</div><button class="btn btn-secondary btn-sm" type="button" data-action="copy" data-value="${esc(order.payment_method === 'lightning' ? order.lightning_invoice : order.payment_address)}">Copiar ${order.payment_method === 'lightning' ? 'invoice' : 'endereço escrow'}</button></article>`).join('');
+-      openModal('Pedidos criados', `<div class="notice notice-success">${esc(data.message || 'Pedidos criados.')}</div>${cards}<button class="btn btn-primary" type="button" data-action="checkout-orders">Ver meus pedidos</button>`, true);
+-    } catch (error) { toast(error.message, 'error'); }
++      state.checkoutPending = false;
++      renderCheckoutOrders(data.message || 'Pedidos criados. Aguarde confirmação do pagamento.');
++      focusUpdatedContent($('#checkoutContent'), null);
++    } catch (error) {
++      if (form.isConnected && sessionVersion === state.sessionVersion) {
++        const feedback = $('#checkoutFeedback');
++        feedback.textContent = error.message;
++        feedback.classList.add('error');
++        focusIfVisible(feedback);
++      }
++    } finally {
++      if (sessionVersion === state.sessionVersion) state.checkoutPending = false;
++      if (form.isConnected && sessionVersion === state.sessionVersion) {
++        form.setAttribute('aria-busy', 'false');
++        $$('button', form).forEach(button => { button.disabled = false; });
++      }
++    }
++  }
++
++  async function syncCheckoutOrder(id) {
++    if (state.checkoutPending) return;
++    state.checkoutPending = true;
++    const sessionVersion = state.sessionVersion;
++    renderCheckoutOrders('Consultando pagamento no servidor…');
++    try {
++      await api(`/api/orders/${idOf(id)}/sync`, { method: 'POST', body: '{}' });
++      const data = await api(`/api/orders/${idOf(id)}`);
++      if (sessionVersion !== state.sessionVersion) return;
++      state.checkoutOrders = state.checkoutOrders.map(order => idOf(order.id) === idOf(id) ? { ...order, ...data.order } : order);
++      state.checkoutPending = false;
++      renderCheckoutOrders('Consulta concluída. Status exibido corresponde à resposta do servidor.');
++    } catch (error) {
++      if (sessionVersion !== state.sessionVersion) return;
++      state.checkoutPending = false;
++      renderCheckoutOrders(error.message);
++    }
+   }
+ 
+   function orderTable(orders, seller = false) {
+@@ -742,17 +964,62 @@
+   async function loadAccount() {
+     if (!state.user) { openAuth('login'); showView('home'); return; }
+     const root = $('#accountContent');
++    const sessionVersion = state.sessionVersion;
++    const request = ++state.accountRequest;
+     const previousFocus = captureFocusTarget();
+     setLoading(root, 'Carregando pedidos');
+     try {
+       const data = await api('/api/orders/my');
+-      const orders = Array.isArray(data.orders) ? data.orders : [];
+-      const paid = orders.filter(order => !['awaiting_payment', 'partial', 'cancelled'].includes(order.status)).length;
+-      const completed = orders.filter(order => order.status === 'completed').length;
+-      const progress = orders.filter(order => ['paid', 'processing', 'shipped'].includes(order.status)).length;
+-      root.innerHTML = `<div class="metrics"><article class="metric-card"><small>Pedidos</small><strong>${orders.length}</strong></article><article class="metric-card"><small>Pagos</small><strong>${paid}</strong></article><article class="metric-card"><small>Concluídos</small><strong>${completed}</strong></article><article class="metric-card"><small>Em andamento</small><strong>${progress}</strong></article></div><section class="panel section"><div class="section-heading"><div><p class="eyebrow"><span class="eyebrow-rule" aria-hidden="true"></span> Histórico</p><h2>Seus pedidos</h2></div></div>${orderTable(orders)}</section>`;
+-    } catch (error) { root.innerHTML = `<div class="notice notice-danger">${esc(error.message)}</div>`; }
+-    finally { focusUpdatedContent(root, previousFocus); }
++      if (sessionVersion !== state.sessionVersion || request !== state.accountRequest) return;
++      state.accountOrders = Array.isArray(data.orders) ? data.orders : [];
++      renderAccount();
++    } catch (error) { if (sessionVersion === state.sessionVersion && request === state.accountRequest) root.innerHTML = `<div class="notice notice-danger">${esc(error.message)}</div><button class="btn btn-secondary" type="button" data-action="refresh-account">Tentar novamente</button>`; }
++    finally { if (sessionVersion === state.sessionVersion && request === state.accountRequest) focusUpdatedContent(root, previousFocus); }
++  }
++
++  function accountOrderCard(order) {
++    const path = ['awaiting_payment', 'paid', 'processing', 'shipped', 'completed'];
++    const progress = order.status === 'partial' ? 0 : path.indexOf(order.status);
++    const exceptional = ['cancelled', 'refunded', 'under_review'].includes(order.status);
++    const awaiting = ['awaiting_payment', 'partial'].includes(order.status);
++    const next = {
++      awaiting_payment: 'Efetue pagamento e consulte confirmação.', partial: 'Pagamento parcial. Consulte valor recebido e restante.',
++      paid: 'Pagamento recebido. Aguarde preparação.', processing: 'Vendedor prepara envio.', shipped: 'Consulte rastreio e histórico de entrega.',
++      completed: 'Pedido concluído. Avaliações disponíveis nos detalhes.', cancelled: 'Pedido cancelado. Consulte histórico.',
++      refunded: 'Reembolso registrado. Consulte transação nos detalhes.', under_review: 'Pedido em disputa. Consulte conversa e decisão.'
++    }[order.status] || 'Consulte detalhes do pedido.';
++    return `<article class="order-card"><header class="order-card-head"><div><small>${esc(order.store_name || 'Loja')}</small><strong>${esc(order.reference || `#${idOf(order.id)}`)}</strong><time datetime="${esc(order.created_at || '')}">${esc(dateText(order.created_at))}</time></div>${statusTag(order.status)}</header>
++      <div class="order-card-items"><span class="order-card-symbol"><i class="bi ${awaiting ? 'bi-currency-bitcoin' : order.status === 'shipped' ? 'bi-truck' : 'bi-box-seam'}" aria-hidden="true"></i></span><div><strong>${esc(next)}</strong><small>${order.shipping_name ? `Entrega para ${esc(order.shipping_name)}` : 'Itens e endereço disponíveis nos detalhes.'}</small></div><div class="order-card-total"><small>Total do pedido</small><strong>₿ ${esc(order.total_btc)}</strong>${num(order.paid_sats) > 0 ? `<small>Recebido ₿ ${esc(order.paid_btc)}</small>` : ''}</div></div>
++      ${exceptional ? '' : `<ol class="order-progress" aria-label="Etapas do pedido">${['Pagamento', 'Pago', 'Preparação', 'Enviado', 'Concluído'].map((label, index) => `<li class="${index < progress ? 'is-complete' : index === progress ? 'is-current' : ''}"${index === progress ? ' aria-current="step"' : ''}><span></span>${label}</li>`).join('')}</ol>`}
++      <footer class="order-card-foot"><span class="mode-tag">${order.payment_method === 'lightning' ? 'Lightning · custodial' : 'Escrow on-chain · 2 de 3'}</span><button class="btn btn-secondary btn-sm" type="button" data-action="open-order" data-id="${idOf(order.id)}">${awaiting ? 'Ver pagamento' : order.status === 'completed' ? 'Detalhes e avaliações' : 'Acompanhar pedido'} <i class="bi bi-arrow-right" aria-hidden="true"></i></button></footer></article>`;
++  }
++
++  function renderAccountOrders() {
++    const root = $('#accountOrders');
++    if (!root) return;
++    const search = state.accountSearch.trim().toLocaleLowerCase('pt-BR');
++    const orders = state.accountOrders.filter(order => {
++      const matchesStatus = state.accountStatus === 'all' || (state.accountStatus === 'awaiting' ? ['awaiting_payment', 'partial'].includes(order.status) : state.accountStatus === 'active' ? ['paid', 'processing', 'shipped'].includes(order.status) : order.status === state.accountStatus);
++      return matchesStatus && `${order.reference || ''} ${order.store_name || ''} ${order.shipping_name || ''}`.toLocaleLowerCase('pt-BR').includes(search);
++    });
++    $('#accountResultCount').textContent = `${orders.length} ${orders.length === 1 ? 'pedido' : 'pedidos'}`;
++    root.innerHTML = orders.length ? orders.map(accountOrderCard).join('') : state.accountOrders.length
++      ? '<div class="empty"><i class="bi bi-search" aria-hidden="true"></i><h3>Nenhum pedido encontrado</h3><p>Altere busca ou status.</p><button class="btn btn-secondary" type="button" data-action="reset-account-filters">Limpar filtros</button></div>'
++      : '<div class="empty"><i class="bi bi-bag" aria-hidden="true"></i><h3>Nenhum pedido registrado</h3><p>Pedidos aparecem aqui após checkout.</p><button class="btn btn-primary" type="button" data-action="catalog">Explorar produtos</button></div>';
++  }
++
++  function renderAccount() {
++    const orders = state.accountOrders;
++    const role = state.user?.role || 'buyer';
++    const awaiting = orders.filter(order => ['awaiting_payment', 'partial'].includes(order.status)).length;
++    const active = orders.filter(order => ['paid', 'processing', 'shipped'].includes(order.status)).length;
++    const completed = orders.filter(order => order.status === 'completed').length;
++    $('#accountTitle').textContent = role === 'admin' ? 'Pedidos do marketplace.' : role === 'seller' ? 'Pedidos da loja.' : 'Seus pedidos.';
++    $('#accountDescription').textContent = role === 'admin' ? 'Últimos pedidos retornados pela API administrativa.' : role === 'seller' ? 'Pagamento, preparação e entrega dos pedidos da sua loja.' : 'Acompanhe pagamentos, entrega, avaliações e disputas.';
++    $('#accountContent').innerHTML = `<div class="account-metrics metrics"><article class="metric-card"><small>Pedidos</small><strong>${orders.length}</strong></article><article class="metric-card"><small>Aguardando BTC</small><strong>${awaiting}</strong></article><article class="metric-card"><small>Em andamento</small><strong>${active}</strong></article><article class="metric-card"><small>Concluídos</small><strong>${completed}</strong></article></div>
++      <section class="section"><div class="section-heading"><div><p class="eyebrow">HISTÓRICO</p><h2>${role === 'buyer' ? 'Compras e entregas' : 'Pedidos e entregas'}</h2></div><div class="actions"><button class="btn btn-secondary btn-sm" type="button" data-action="notifications"><i class="bi bi-bell" aria-hidden="true"></i> Notificações</button><button class="btn btn-secondary btn-sm" type="button" data-action="refresh-account"><i class="bi bi-arrow-clockwise" aria-hidden="true"></i> Atualizar</button>${role !== 'buyer' ? `<button class="btn btn-secondary btn-sm" type="button" data-view="${role}">Voltar ao painel</button>` : ''}</div></div>
++      <div class="account-toolbar"><div class="field"><label for="accountOrderSearch">Buscar pedido, loja ou destinatário</label><input class="input" id="accountOrderSearch" type="search" value="${esc(state.accountSearch)}" placeholder="Referência do pedido ou nome"></div><div class="field"><label for="accountOrderStatus">Status</label><select class="input" id="accountOrderStatus">${[['all', 'Todos os status'], ['awaiting', 'Aguardando pagamento'], ['active', 'Em andamento'], ['completed', 'Concluídos'], ['under_review', 'Em disputa'], ['cancelled', 'Cancelados'], ['refunded', 'Reembolsados']].map(([value, label]) => `<option value="${value}" ${state.accountStatus === value ? 'selected' : ''}>${label}</option>`).join('')}</select></div><p id="accountResultCount" role="status" aria-live="polite"></p></div><div id="accountOrders" class="account-orders"></div></section>`;
++    renderAccountOrders();
+   }
+ 
+   async function loadReviews() {
+@@ -1062,18 +1329,73 @@
+ 
+   function batchesTable(batches) {
+     if (!batches.length) return '<div class="empty">Nenhum lote criado.</div>';
+-    return `<div class="table-wrap"><table><thead><tr><th>Lote</th><th>Lojas</th><th>Total</th><th>Status</th><th>Ação</th></tr></thead><tbody>${batches.map(batch => `<tr><td><strong>${esc(batch.reference)}</strong><br><small>${esc(dateText(batch.created_at))}</small></td><td>${esc(batch.store_count ?? batch.items_count ?? '—')}</td><td>₿ ${esc(batch.total_btc)}</td><td>${statusTag(batch.status)}</td><td><button class="btn btn-secondary btn-sm" type="button" data-action="open-batch" data-id="${idOf(batch.id)}">Detalhes</button></td></tr>`).join('')}</tbody></table></div>`;
++    return `<div class="table-wrap"><table><thead><tr><th>Lote</th><th>Destinos</th><th>Total</th><th>Status</th><th>Ação</th></tr></thead><tbody>${batches.map(batch => `<tr><td><strong>${esc(batch.reference)}</strong><br><small>${esc(dateText(batch.created_at))}</small></td><td>${esc(batch.destination_count ?? batch.store_count ?? batch.items_count ?? '—')}</td><td>₿ ${esc(batch.total_btc)}</td><td>${statusTag(batch.status)}</td><td><button class="btn btn-secondary btn-sm" type="button" data-action="open-batch" data-id="${idOf(batch.id)}">Detalhes</button></td></tr>`).join('')}</tbody></table></div>`;
+   }
+ 
+   function treasurySection(data) {
+     const destinations = data.destinations || [];
+     const active = destinations.filter(item => item.active);
+-    return `<div class="grid-2 section"><section class="panel"><h2>Carteira de liquidação</h2><p>Crie endereço rotulado no Bitcoin Core ou consolide UTXOs conforme a política do servidor.</p><button class="btn btn-primary" type="button" data-action="new-settlement-address">Criar endereço</button><div class="field"><label for="consolidateDestination">Destino da consolidação (opcional)</label><input class="input" id="consolidateDestination"></div><button class="btn btn-danger" type="button" data-action="consolidate" ${config.btcMode !== 'rpc' ? 'disabled' : ''}>Centralizar UTXOs</button></section><section class="panel"><h2>Distribuição de reservas</h2><p>Distribui o valor entre destinos aprovados conforme os pesos cadastrados.</p><div class="field"><label for="reserveAmount">Valor BTC</label><input class="input" id="reserveAmount" type="number" min="0.00000001" step="0.00000001"></div><div id="destinationChecks">${active.length ? active.map(item => `<label class="check-row"><input type="checkbox" value="${idOf(item.id)}" data-reserve-dest><span>${esc(item.label)} · peso ${esc(item.weight)}</span></label>`).join('') : '<div class="empty">Nenhum destino ativo.</div>'}</div><button class="btn btn-secondary" type="button" data-action="distribute-reserves" ${active.length ? '' : 'disabled'}>Distribuir reservas</button></section></div><div class="grid-2 section"><section class="panel"><h2>Novo destino aprovado</h2><form id="destinationForm"><div class="field"><label for="destinationLabel">Rótulo</label><input class="input" id="destinationLabel" name="label" required maxlength="120"></div><div class="field"><label for="destinationAddress">Endereço Bitcoin</label><input class="input" id="destinationAddress" name="address" required maxlength="160"></div><div class="field"><label for="destinationWeight">Peso</label><input class="input" id="destinationWeight" name="weight" type="number" min="1" max="100" value="1" required></div><button class="btn btn-primary" type="submit">Cadastrar destino</button></form></section><section class="panel"><h2>Destinos cadastrados</h2>${destinationsTable(destinations)}</section></div>`;
++    const wallet = data.wallet || {};
++    const rpc = config.btcMode === 'rpc';
++    const direct = rpc && config.commissionSigningMode === 'hot';
++    return `<section class="panel treasury-workflow section" aria-labelledby="treasuryWorkflowTitle"><div class="section-heading"><div><p class="eyebrow">RESERVAS E COMISSÕES</p><h2 id="treasuryWorkflowTitle">Escolha operação pelo destino</h2></div><button class="btn btn-secondary btn-sm" type="button" data-action="refresh-treasury"><i class="bi bi-arrow-clockwise" aria-hidden="true"></i> Atualizar dados</button></div><p>Escrows on-chain são liberados por PSBT de cada pedido. Estas operações usam carteira de comissão e reservas.</p>
++      <svg class="treasury-flow-svg" viewBox="0 0 760 150" role="img" aria-labelledby="treasurySvgTitle treasurySvgDesc"><title id="treasurySvgTitle">Fluxo das reservas Bitcoin</title><desc id="treasurySvgDesc">Endereço de recebimento, carteira de comissão e destinos aprovados. Consolidação reúne UTXOs; distribuição usa pesos.</desc><path class="flow-link" d="M150 65H318M442 65H610" fill="none"/><circle class="flow-pulse" cx="230" cy="65" r="5"/><circle class="flow-pulse" cx="530" cy="65" r="5"/><rect class="flow-node" x="12" y="20" width="138" height="90" rx="18"/><rect class="flow-node" x="318" y="20" width="124" height="90" rx="18"/><rect class="flow-node" x="610" y="20" width="138" height="90" rx="18"/><text class="flow-label" x="81" y="57" text-anchor="middle">Recebimento</text><text class="flow-caption" x="81" y="81" text-anchor="middle">Endereço Core</text><text class="flow-label" x="380" y="57" text-anchor="middle">Comissões</text><text class="flow-caption" x="380" y="81" text-anchor="middle">UTXOs da carteira</text><text class="flow-label" x="679" y="57" text-anchor="middle">Reservas</text><text class="flow-caption" x="679" y="81" text-anchor="middle">Destinos + pesos</text><text class="flow-caption" x="233" y="132" text-anchor="middle">Consolidar quando necessário</text><text class="flow-caption" x="527" y="132" text-anchor="middle">Revisar antes de distribuir</text></svg>
++      <div class="treasury-route" aria-label="Atalhos das operações">${[['treasuryReceive', '01', 'Receber'], ['treasuryConsolidate', '02', 'Consolidar'], ['treasuryDistribute', '03', 'Distribuir'], ['treasuryDestinations', '04', 'Destinos']].map(([section, step, label]) => `<button class="btn btn-secondary" type="button" data-action="treasury-section" data-section="${section}"><small>${step}</small> ${label}</button>`).join('')}</div><div class="notice notice-info">Rede ${esc(wallet.network || config.btcNetwork)} · Bitcoin ${esc(config.btcMode)} · assinatura ${esc(config.commissionSigningMode)}. ${direct ? 'Envio direto habilitado; confirmação administrativa continua obrigatória.' : rpc ? 'Envio direto desativado. Use PSBT de comissão para assinatura externa.' : 'Modo sem operações de rede. Prévia local e consulta permanecem disponíveis.'}</div></section>
++      <div class="grid-2 treasury-operation-grid section"><section class="panel" id="treasuryReceive" tabindex="-1"><p class="eyebrow">01 / RECEBER</p><h2>Endereço de comissão</h2><p>Crie endereço rotulado na carteira de comissão do Bitcoin Core. Saldo só muda após recebimento e confirmação.</p><dl class="treasury-wallet-status"><div><dt>Estado do Core</dt><dd>${esc(statusLabels[wallet.status] || wallet.status || 'Não informado')}</dd></div><div><dt>UTXOs retornados</dt><dd>${esc(wallet.utxos ?? '—')}</dd></div></dl><button class="btn btn-primary" type="button" data-action="new-settlement-address" ${rpc ? '' : 'disabled'}><i class="bi bi-qr-code" aria-hidden="true"></i> Criar endereço</button>${!rpc ? '<small>Geração requer Bitcoin Core no modo RPC.</small>' : ''}</section>
++      <section class="panel" id="treasuryConsolidate" tabindex="-1"><p class="eyebrow">02 / CONSOLIDAR</p><h2>Reunir UTXOs</h2><p>Consolidação transfere UTXOs da carteira para endereço único e consome taxa de rede. Não libera escrows de compradores.</p><div class="field"><label for="consolidateDestination">Destino da consolidação (opcional)</label><input class="input" id="consolidateDestination" maxlength="160" spellcheck="false" autocomplete="off"><small>Vazio: servidor gera destino na carteira de comissão.</small></div><button class="btn btn-danger" type="button" data-action="consolidate" ${direct ? '' : 'disabled'}>Centralizar UTXOs</button>${!direct ? '<p class="treasury-capability-note">Requer RPC e assinatura hot habilitada no servidor.</p>' : ''}</section></div>
++      <section class="panel section" id="treasuryDistribute" tabindex="-1"><div class="section-heading"><div><p class="eyebrow">03 / DISTRIBUIR</p><h2>Simule divisão antes do envio</h2></div><span class="mode-tag">Prévia local · sem movimentação</span></div><p>Selecione destinos ativos. Peso define proporção; último destino recebe resto de satoshis do arredondamento.</p><div class="grid-2"><div><div class="field"><label for="reserveAmount">Valor BTC</label><input class="input" id="reserveAmount" type="number" min="0.00000001" step="0.00000001" inputmode="decimal"><small>Até 8 casas decimais, sem notação científica.</small></div><div id="destinationChecks">${active.length ? active.map(item => `<label class="check-row"><input type="checkbox" value="${idOf(item.id)}" data-reserve-dest><span><strong>${esc(item.label)}</strong><small>Peso ${esc(item.weight)} · ${esc(short(item.address, 28))}</small></span></label>`).join('') : '<div class="empty">Cadastre e ative destino para usar prévia.</div>'}</div><div class="actions"><button class="btn btn-secondary btn-sm" type="button" data-action="select-reserve-destinations" ${active.length ? '' : 'disabled'}>Selecionar todos</button><button class="btn btn-secondary btn-sm" type="button" data-action="clear-reserve-destinations" ${active.length ? '' : 'disabled'}>Limpar seleção</button></div></div><div class="treasury-preview" id="reservePreview" role="status" aria-live="polite"><p>Informe valor e selecione destinos para visualizar divisão.</p></div></div><p class="treasury-preview-note">Prévia local — servidor confirma divisão e taxas. Taxa de rede não está incluída. Destinos repetidos por endereço são agrupados pelo servidor.</p><div class="actions"><button class="btn btn-primary" type="button" data-action="distribute-reserves" ${direct && active.length ? '' : 'disabled'}>Revisar e distribuir reservas</button>${!direct ? '<button class="btn btn-secondary" type="button" data-view="custody">Abrir PSBT de comissão <i class="bi bi-arrow-up-right" aria-hidden="true"></i></button>' : ''}</div></section>
++      <div class="grid-2 section treasury-destinations" id="treasuryDestinations" tabindex="-1"><section class="panel"><p class="eyebrow">04 / DESTINOS</p><h2>Novo destino aprovado</h2><p>Cadastro define endereço e peso. Ativação não envia Bitcoin.</p><form id="destinationForm"><div class="field"><label for="destinationLabel">Rótulo</label><input class="input" id="destinationLabel" name="label" required maxlength="120"></div><div class="field"><label for="destinationAddress">Endereço Bitcoin</label><input class="input" id="destinationAddress" name="address" required maxlength="160" spellcheck="false" autocomplete="off"></div><div class="field"><label for="destinationWeight">Peso</label><input class="input" id="destinationWeight" name="weight" type="number" min="1" max="100" value="1" required></div><button class="btn btn-primary" type="submit">Cadastrar destino</button></form></section><section class="panel"><div class="section-heading"><div><h2>Destinos cadastrados</h2><p>${destinations.length} no cadastro · ${active.length} ativos</p></div><button class="btn btn-secondary btn-sm" type="button" data-action="export-destinations"><i class="bi bi-download" aria-hidden="true"></i> Exportar CSV</button></div><div class="field"><label for="treasuryDestinationSearch">Buscar rótulo ou endereço</label><input class="input" id="treasuryDestinationSearch" type="search" value="${esc(state.treasurySearch)}"></div><div class="field"><label for="treasuryDestinationFilter">Estado do destino</label><select class="input" id="treasuryDestinationFilter">${[['all', 'Todos'], ['active', 'Ativos'], ['inactive', 'Inativos']].map(([value, label]) => `<option value="${value}" ${state.treasuryFilter === value ? 'selected' : ''}>${label}</option>`).join('')}</select></div><div id="treasuryDestinationResults">${destinationsTable(filteredDestinations(destinations))}</div></section></div>
++      <div class="actions treasury-shortcuts"><button class="btn btn-secondary" type="button" data-admin-tab="settlements">Liquidações elegíveis</button><button class="btn btn-secondary" type="button" data-admin-tab="audit">Auditoria</button><button class="btn btn-secondary" type="button" data-view="custody">Comissões e PSBTs</button></div>`;
++  }
++
++  function btcStringToSats(value) {
++    const match = String(value || '').trim().match(/^(\d+)(?:\.(\d{1,8}))?$/);
++    if (!match) return null;
++    return BigInt(match[1]) * 100000000n + BigInt((match[2] || '').padEnd(8, '0'));
++  }
++
++  function satsToBtcText(sats) {
++    const text = BigInt(sats).toString().padStart(9, '0');
++    return `${text.slice(0, -8)}.${text.slice(-8)}`;
++  }
++
++  function calculateReserveAllocation(amount, destinations) {
++    const sats = btcStringToSats(amount);
++    if (sats === null || sats <= 0n || !destinations.length) return [];
++    const sorted = destinations.slice().sort((first, second) => idOf(first.id) - idOf(second.id));
++    const weight = sorted.reduce((total, destination) => total + BigInt(Math.max(1, idOf(destination.weight))), 0n);
++    let remaining = sats;
++    return sorted.map((destination, index) => {
++      const share = index === sorted.length - 1 ? remaining : sats * BigInt(Math.max(1, idOf(destination.weight))) / weight;
++      remaining -= share;
++      return { ...destination, sats: share };
++    });
++  }
++
++  function updateReservePreview() {
++    const root = $('#reservePreview');
++    if (!root) return [];
++    const ids = new Set($$('[data-reserve-dest]:checked').map(input => idOf(input.value)));
++    const selected = (state.admin?.destinations || []).filter(item => item.active && ids.has(idOf(item.id)));
++    const allocation = calculateReserveAllocation($('#reserveAmount')?.value, selected);
++    root.innerHTML = allocation.length ? `<h3>Divisão estimada</h3>${allocation.map(item => `<div class="summary-line"><span>${esc(item.label)}<small>Peso ${idOf(item.weight)}</small></span><strong>₿ ${satsToBtcText(item.sats)}<small>${item.sats.toLocaleString('pt-BR')} sats</small></strong></div>`).join('')}<div class="summary-total"><span>Total alocado</span><strong>₿ ${satsToBtcText(allocation.reduce((total, item) => total + item.sats, 0n))}</strong></div>` : '<p>Informe valor positivo com até 8 casas decimais e selecione destinos ativos.</p>';
++    return allocation;
++  }
++
++  function filteredDestinations(destinations = state.admin?.destinations || []) {
++    const search = state.treasurySearch.trim().toLocaleLowerCase('pt-BR');
++    return destinations.filter(item => (state.treasuryFilter === 'all' || (state.treasuryFilter === 'active' ? Boolean(item.active) : !item.active)) && `${item.label} ${item.address}`.toLocaleLowerCase('pt-BR').includes(search));
++  }
++
++  function exportDestinations() {
++    const cell = value => `"${String(value ?? '').replace(/^[=+\-@]/, "'$&").replace(/"/g, '""')}"`;
++    const rows = filteredDestinations().map(item => [item.id, item.label, item.address, item.weight, item.active ? 'Ativo' : 'Inativo', item.created_at]);
++    downloadText([['ID', 'Rótulo', 'Endereço', 'Peso', 'Status', 'Criado em'], ...rows].map(row => row.map(cell).join(';')).join('\r\n'), 'bitloja-destinos.csv');
+   }
+ 
+   function destinationsTable(destinations) {
+     if (!destinations.length) return '<div class="empty">Nenhum destino cadastrado.</div>';
+-    return `<div class="table-wrap"><table><thead><tr><th>Destino</th><th>Peso</th><th>Status</th><th>Ação</th></tr></thead><tbody>${destinations.map(item => `<tr><td><strong>${esc(item.label)}</strong><br><small>${esc(short(item.address, 30))}</small></td><td>${esc(item.weight)}</td><td>${item.active ? 'Ativo' : 'Inativo'}</td><td><button class="btn btn-secondary btn-sm" type="button" data-action="toggle-destination" data-id="${idOf(item.id)}">${item.active ? 'Desativar' : 'Ativar'}</button></td></tr>`).join('')}</tbody></table></div>`;
++    return `<div class="table-wrap"><table><thead><tr><th>Destino</th><th>Peso</th><th>Status</th><th>Ações</th></tr></thead><tbody>${destinations.map(item => `<tr><td><strong>${esc(item.label)}</strong><br><code title="${esc(item.address)}">${esc(short(item.address, 30))}</code></td><td>${esc(item.weight)}</td><td>${item.active ? 'Ativo' : 'Inativo'}</td><td><div class="actions"><button class="btn btn-secondary btn-sm" type="button" data-action="copy" data-value="${esc(item.address)}" aria-label="Copiar endereço de ${esc(item.label)}">Copiar</button><button class="btn btn-secondary btn-sm" type="button" data-action="toggle-destination" data-id="${idOf(item.id)}">${item.active ? 'Desativar' : 'Ativar'}</button></div></td></tr>`).join('')}</tbody></table></div>`;
+   }
+ 
+   function usersSection(data) {
+@@ -1188,6 +1510,7 @@
+   }
+ 
+   async function consolidateTreasury() {
++    if (config.btcMode !== 'rpc' || config.commissionSigningMode !== 'hot') return;
+     const critical = await promptCritical('CENTRALIZAR TESOURARIA');
+     if (!critical) return;
+     try { const data = await api('/api/admin/treasury/consolidate', { method: 'POST', body: JSON.stringify({ ...critical, destination: String($('#consolidateDestination')?.value || '').trim() }) }); toast(`${data.message || 'Consolidação enviada.'} TX ${short(data.txid)}`); await loadAdmin(); }
+@@ -1195,6 +1518,9 @@
+   }
+ 
+   async function distributeReserves() {
++    if (config.btcMode !== 'rpc' || config.commissionSigningMode !== 'hot') return;
++    const allocation = updateReservePreview();
++    if (!allocation.length) { focusIfVisible($('#reserveAmount')); return; }
+     const critical = await promptCritical('DISTRIBUIR RESERVAS');
+     if (!critical) return;
+     const destinationIds = $$('[data-reserve-dest]:checked').map(input => idOf(input.value));
+@@ -1236,22 +1562,61 @@
+     try {
+       const cfg = await api('/api/custody/config');
+       state.custody = cfg;
++      config.custodyMode = cfg.custody_mode || config.custodyMode;
++      config.lightningMode = cfg.lightning_mode || config.lightningMode;
++      config.commissionSigningMode = cfg.commission_signing_mode || config.commissionSigningMode;
++      renderNetwork();
+       let commission = null;
+       if (state.user.role === 'admin') commission = await api('/api/admin/commission');
+       const commissionPanel = commission ? commissionAdminHtml(commission) : '';
+-      const protocolCards = `<div class="protocol-grid custody-protocol-grid section"><article class="protocol-card"><span class="protocol-step">01</span><h3>Escrow on-chain</h3><p>P2WSH 2-de-3 com chaves públicas do comprador, vendedor e mediador.</p><span class="mode-tag">${esc(cfg.custody_mode || '—')}</span></article><article class="protocol-card"><span class="protocol-step">02</span><h3>PSBT offline</h3><p>Propostas são exportadas, assinadas em carteira externa e submetidas para validação.</p><span class="mode-tag">BIP 174</span></article><article class="protocol-card"><span class="protocol-step">03</span><h3>Lightning</h3><p>O modo e a configuração exibidos refletem o serviço disponível no servidor.</p><span class="mode-tag">${esc(cfg.lightning_mode || '—')}</span></article></div>`;
+-      const custodyHero = `<header class="custody-hero financial-intro"><div><p class="eyebrow"><span class="eyebrow-rule" aria-hidden="true"></span> PAGAMENTOS BITCOIN</p><h1>Configuração de custódia</h1><p>Modos disponíveis neste servidor; chaves privadas e seeds ficam fora da BitLoja.</p></div><span class="mode-tag">Custódia · ${esc(cfg.custody_mode || '—')}</span></header>`;
+-      const profilePanels = `<div class="grid-2 custody-settings section"><section class="panel"><h2>Minha chave pública</h2><p>Cadastre chave pública Bitcoin comprimida. Não envie seed, WIF ou chave privada.</p><form id="profileKeyForm"><div class="field"><label for="profilePubkey">Chave pública</label><input class="input" id="profilePubkey" name="pubkey" value="${esc(cfg.user_pubkey || '')}" placeholder="02/03 + 64 caracteres hex"></div><button class="btn btn-primary" type="submit">Salvar chave pública</button></form></section><section class="panel"><h2>Chave pública do mediador</h2><code class="keybox">${esc(cfg.platform_pubkey || 'Não configurada')}</code><p>O backend guarda chave pública e descriptors; assinatura ocorre fora do Flask.</p></section></div>`;
+-      root.innerHTML = `${custodyHero}${protocolCards}${profilePanels}${state.user.role === 'seller' ? '<div class="notice notice-info">A chave escrow específica da loja fica em Minha loja.</div>' : ''}${commissionPanel}`;
++      const custodyHero = `<header class="custody-hero financial-intro"><div><p class="eyebrow"><span class="eyebrow-rule" aria-hidden="true"></span> PAGAMENTOS BITCOIN</p><h1>Seu caminho em Bitcoin.</h1><p>Chaves públicas, pagamento e assinatura externa. Cada caminho mantém estado próprio.</p></div><span class="mode-tag">Rede ${esc(config.btcNetwork)} · ${esc(config.btcMode)}</span></header>`;
++      const profilePanels = `<div class="grid-2 custody-settings section"><section class="panel"><p class="eyebrow">IDENTIDADE BITCOIN</p><h2>Minha chave pública</h2><p>Formato comprimido: 02 ou 03 + 64 caracteres hexadecimais. Chave privada e seed ficam fora da BitLoja.</p><form id="profileKeyForm"><div class="field"><label for="profilePubkey">Chave pública</label><div class="bitcoin-key-field"><input class="input" id="profilePubkey" name="pubkey" type="password" value="${esc(cfg.user_pubkey || '')}" pattern="(02|03)[0-9a-fA-F]{64}" minlength="66" maxlength="66" placeholder="02/03 + 64 caracteres hex" spellcheck="false" autocomplete="off" aria-describedby="profileKeyFeedback"><button class="btn btn-secondary btn-sm" type="button" data-action="toggle-public-key" data-key-target="profilePubkey" aria-controls="profilePubkey" aria-pressed="false">Mostrar</button></div><small id="profileKeyFeedback" role="status" aria-live="polite"></small></div><div class="actions"><button class="btn btn-primary" type="submit">Salvar chave pública</button><button class="btn btn-secondary" type="button" data-action="copy-field" data-field="profilePubkey">Copiar chave</button></div></form></section><section class="panel"><p class="eyebrow">TERCEIRO PARTICIPANTE</p><h2>Chave pública do mediador</h2><details class="bitcoin-key-disclosure"><summary>Mostrar chave pública do servidor</summary><code class="keybox">${esc(cfg.platform_pubkey || 'Não configurada')}</code></details><p>O mediador participa do escrow. Liberação ou devolução exige duas das três assinaturas.</p>${cfg.platform_pubkey ? `<button class="btn btn-secondary btn-sm" type="button" data-action="copy" data-value="${esc(cfg.platform_pubkey)}">Copiar chave do mediador</button>` : '<div class="notice notice-warning">Chave do mediador não configurada.</div>'}</section></div>`;
++      root.innerHTML = `${custodyHero}${bitcoinGuideHtml(cfg)}${profilePanels}${state.user.role === 'seller' ? '<div class="notice notice-info">A chave escrow específica da loja fica em <button class="text-link" type="button" data-seller-tab="store">Minha loja</button>.</div>' : ''}${commissionPanel}`;
+       $('#profileKeyForm')?.addEventListener('submit', saveProfileKey);
++      updateProfileKeyFeedback();
+     } catch (error) { root.innerHTML = `<div class="notice notice-danger">${esc(error.message)}</div>`; }
+     finally { focusUpdatedContent(root, previousFocus); }
+   }
+ 
+   async function saveProfileKey(event) {
+     event.preventDefault();
+-    try { const data = await api('/api/profile/bitcoin-key', { method: 'POST', body: JSON.stringify(Object.fromEntries(new FormData(event.currentTarget))) }); state.user.bitcoin_pubkey = data.pubkey; toast(data.message || 'Chave pública salva.'); }
+-    catch (error) { toast(error.message, 'error'); }
++    const form = event.currentTarget;
++    if (form.getAttribute('aria-busy') === 'true' || !form.reportValidity()) return;
++    const payload = JSON.stringify(Object.fromEntries(new FormData(form)));
++    const submit = $('button[type="submit"]', form);
++    form.setAttribute('aria-busy', 'true');
++    submit.disabled = true;
++    try {
++      const data = await api('/api/profile/bitcoin-key', { method: 'POST', body: payload });
++      state.user.bitcoin_pubkey = data.pubkey;
++      if (state.custody) state.custody.user_pubkey = data.pubkey;
++      const feedback = $('#profileKeyFeedback');
++      if (feedback) feedback.textContent = data.message || 'Chave pública salva no servidor.';
++    } catch (error) {
++      const feedback = $('#profileKeyFeedback');
++      if (feedback) { feedback.textContent = error.message; feedback.classList.add('error'); }
++    } finally {
++      form.setAttribute('aria-busy', 'false');
++      if (submit.isConnected) submit.disabled = false;
++    }
++  }
++
++  function updateProfileKeyFeedback() {
++    const field = $('#profilePubkey');
++    const feedback = $('#profileKeyFeedback');
++    if (!field || !feedback) return;
++    const value = field.value.trim();
++    const valid = /^(02|03)[0-9a-fA-F]{64}$/.test(value);
++    feedback.textContent = !value ? 'Nenhuma chave informada. Carteira watch-only pode derivar chaves por pedido.' : valid ? 'Formato comprimido válido. Servidor valida chave ao salvar.' : `${value.length}/66 caracteres. Use prefixo 02 ou 03 e somente hexadecimal.`;
++    feedback.classList.toggle('error', Boolean(value) && !valid);
++  }
++
++  function bitcoinGuideHtml(cfg) {
++    const seller = state.user?.role === 'seller';
++    return `<section class="panel bitcoin-guide section"><div class="section-heading"><div><p class="eyebrow">ESCROW ON-CHAIN</p><h2>Do pedido à assinatura.</h2></div><span class="mode-tag">2 de 3 participantes</span></div><p>${esc(cfg.onchain_model || 'Modelo on-chain não informado pelo servidor.')}</p>
++      <svg class="bitcoin-flow-svg" viewBox="0 0 800 150" role="img" aria-labelledby="bitcoinSvgTitle bitcoinSvgDesc"><title id="bitcoinSvgTitle">Caminho do escrow on-chain</title><desc id="bitcoinSvgDesc">Chaves públicas de comprador, vendedor e mediador formam escrow. Pagamento é confirmado; duas assinaturas externas autorizam proposta PSBT de liberação ou devolução.</desc><path class="flow-link" d="M166 65H220M378 65H430M588 65H640" fill="none"/><circle class="flow-pulse" cx="195" cy="65" r="5"/><circle class="flow-pulse" cx="405" cy="65" r="5"/><circle class="flow-pulse" cx="615" cy="65" r="5"/><rect class="flow-node" x="6" y="20" width="160" height="90" rx="18"/><rect class="flow-node" x="220" y="20" width="158" height="90" rx="18"/><rect class="flow-node" x="430" y="20" width="158" height="90" rx="18"/><rect class="flow-node" x="640" y="20" width="154" height="90" rx="18"/><text class="flow-label" x="86" y="57" text-anchor="middle">3 chaves públicas</text><text class="flow-caption" x="86" y="81" text-anchor="middle">Comprador · loja · mediador</text><text class="flow-label" x="299" y="57" text-anchor="middle">Escrow do pedido</text><text class="flow-caption" x="299" y="81" text-anchor="middle">Pagamento on-chain</text><text class="flow-label" x="509" y="57" text-anchor="middle">PSBT externa</text><text class="flow-caption" x="509" y="81" text-anchor="middle">2 assinaturas válidas</text><text class="flow-label" x="717" y="57" text-anchor="middle">Destino revisado</text><text class="flow-caption" x="717" y="81" text-anchor="middle">Liberação ou devolução</text><text class="flow-caption" x="400" y="137" text-anchor="middle">Servidor prepara e valida. Sua carteira assina fora da BitLoja.</text></svg>
++      <div class="bitcoin-paths"><details open><summary><span>01</span> Preparar identidade e carteira</summary><p>Cadastre chave pública comprimida abaixo ou configure descriptors públicos da carteira watch-only. Chaves por pedido dependem da configuração retornada pelo servidor.</p><button class="btn btn-secondary btn-sm" type="button" data-view="wallet">Abrir carteira <i class="bi bi-arrow-up-right" aria-hidden="true"></i></button>${seller ? '<button class="btn btn-secondary btn-sm" type="button" data-seller-tab="store">Chave escrow da loja</button>' : ''}</details><details><summary><span>02</span> Pagar endereço do pedido</summary><p>Checkout apresenta endereço escrow e total de cada loja. Use rede ${esc(config.btcNetwork)} e consulte confirmação em detalhes do pedido.</p><button class="btn btn-secondary btn-sm" type="button" data-view="account">Abrir pedidos</button></details><details><summary><span>03</span> Liberar ou devolver por PSBT</summary><p>Abra detalhes do pedido e gerencie PSBTs. Baixe proposta, assine em carteira externa e envie assinatura. Transmissão aparece quando servidor confirma assinaturas suficientes.</p><p>Escrows não entram automaticamente em lotes de liquidação da tesouraria.</p><button class="btn btn-secondary btn-sm" type="button" data-view="account">Consultar PSBTs por pedido</button></details><details><summary><span>LN</span> Lightning segue caminho custodial</summary><p>${esc(cfg.warning || 'Lightning comum liquida no nó da plataforma e não herda escrow 2-de-3 on-chain.')}</p><span class="mode-tag">Lightning · ${esc(cfg.lightning_mode || 'Não informado')}</span></details></div></section>
++      <section class="bitcoin-capabilities protocol-grid section" aria-label="Configuração atual do servidor"><article class="protocol-card"><p class="eyebrow">ON-CHAIN</p><h3>Custódia ${esc(cfg.custody_mode || 'Não informada')}</h3><p>${config.btcMode === 'rpc' ? 'Conectado por configuração RPC; disponibilidade operacional é consultada na carteira.' : 'Modo demonstração; exemplos não representam confirmação de rede.'}</p></article><article class="protocol-card"><p class="eyebrow">LIGHTNING</p><h3>${cfg.lightning_mode === 'off' ? 'Desativado' : `Modo ${esc(cfg.lightning_mode || 'Não informado')}`}</h3><p>${cfg.lightning_mode === 'off' ? 'Opção indisponível no checkout deste servidor.' : `Modelo informado: ${esc(cfg.lightning_custody || 'Não informado')}.`}</p></article><article class="protocol-card"><p class="eyebrow">COMISSÃO</p><h3>Assinatura ${esc(cfg.commission_signing_mode || 'Não informada')}</h3><p>${cfg.commission_signing_mode === 'hot' ? 'Envio direto depende de Bitcoin Core e confirmações administrativas.' : 'PSBT permite assinatura externa; consolidação e distribuição diretas ficam desativadas.'}</p>${state.user?.role === 'admin' ? '<button class="text-link" type="button" data-admin-tab="treasury">Abrir tesouraria</button>' : ''}</article></section>`;
+   }
+ 
+   function commissionAdminHtml(data) {
+@@ -1422,27 +1787,91 @@
+ 
+   async function openNotifications(beforeId = '') {
+     if (!state.user) { openAuth('login'); return; }
++    if (state.activeView !== 'notifications') {
++      state.notificationsReturn = { view: state.activeView, sellerTab: state.sellerTab, adminTab: state.adminTab };
++      closeModal({ restoreFocus: false });
++      showView('notifications');
++    }
++    if (state.notificationsLoading) { renderNotifications(); return; }
++    const request = ++state.notificationsRequest;
++    const append = Boolean(beforeId);
++    state.notificationsLoading = true;
++    if (!append) {
++      state.notifications = [];
++      state.notificationsCursor = 0;
++      state.notificationsHasMore = false;
++    }
++    renderNotifications();
+     try {
+       const query = new URLSearchParams({ limit: '50' });
+       if (beforeId) query.set('before_id', String(idOf(beforeId)));
+       const data = await api(`/api/notifications?${query}`);
+-      state.notifications = beforeId ? [...state.notifications, ...(data.notifications || [])] : (data.notifications || []);
++      if (request !== state.notificationsRequest || !state.user) return;
++      const page = Array.isArray(data.notifications) ? data.notifications : [];
++      const unique = new Map((append ? state.notifications : []).map(item => [idOf(item.id), item]));
++      page.forEach(item => { unique.set(idOf(item.id), item); });
++      state.notifications = Array.from(unique.values()).sort((a, b) => idOf(b.id) - idOf(a.id));
+       state.unreadCount = idOf(data.unread_count);
++      state.notificationsCursor = page.length ? Math.min(...page.map(item => idOf(item.id))) : 0;
++      state.notificationsHasMore = page.length === 50 && state.notificationsCursor > 0;
++      state.notificationsLoading = false;
+       renderSession();
+-      const oldest = state.notifications.reduce((min, item) => Math.min(min, idOf(item.id)), Number.MAX_SAFE_INTEGER);
+-      const body = `<div class="notifications-tools"><strong>${state.unreadCount} não lidas</strong><button class="btn btn-secondary btn-sm" type="button" data-action="read-all-notifications" ${state.unreadCount ? '' : 'disabled'}>Marcar todas como lidas</button></div><div class="notification-list">${state.notifications.length ? state.notifications.map(item => `<article class="notification-item ${item.read_at ? 'is-read' : ''}"><div><strong>${esc(item.title)}</strong><p>${esc(item.body)}</p><small>${esc(dateText(item.created_at))}</small></div><div class="notification-actions">${item.order_id ? `<button class="btn btn-secondary btn-sm" type="button" data-action="notification-order" data-id="${idOf(item.order_id)}">Ver pedido</button>` : ''}${!item.read_at ? `<button class="btn btn-secondary btn-sm" type="button" data-action="read-notification" data-id="${idOf(item.id)}">Marcar lida</button>` : ''}</div></article>`).join('') : '<div class="empty">Nenhuma notificação.</div>'}</div>${state.notifications.length >= 50 ? `<button class="btn btn-secondary" type="button" data-action="older-notifications" data-before="${oldest}">Carregar anteriores</button>` : ''}`;
+-      openModal('Notificações', body, true);
+-    } catch (error) { toast(error.message, 'error'); }
++      renderNotifications();
++      if (!append) focusUpdatedContent($('#notificationsContent'), null);
++    } catch (error) {
++      if (request === state.notificationsRequest) {
++        state.notificationsLoading = false;
++        renderNotifications(error.message);
++      }
++    }
++  }
++
++  function renderNotifications(error = '') {
++    const filter = state.notificationsFilter;
++    const visible = state.notifications.filter(item => filter === 'all' || (filter === 'unread' ? !item.read_at : Boolean(item.read_at)));
++    const roleLabel = state.user?.role === 'admin' ? 'Administração' : state.user?.role === 'seller' ? 'Painel do vendedor' : 'Sua conta';
++    const pending = state.notificationsLoading || state.notificationsWriting;
++    const origin = state.notificationsReturn?.view || 'account';
++    const originLabel = { home: 'Início', catalog: 'Produtos', product: 'Produto', store: 'Loja', cart: 'Carrinho', checkout: 'Checkout', seller: 'Painel do vendedor', admin: 'Administração', wallet: 'Carteira', custody: 'Bitcoin', account: 'Pedidos' }[origin] || 'Pedidos';
++    $('#notificationsContent').innerHTML = `<div class="inbox-toolbar"><div><span class="mode-tag">${roleLabel}</span><p><strong>${state.unreadCount}</strong> ${state.unreadCount === 1 ? 'não lida' : 'não lidas'} no total · ${state.notifications.length} carregadas</p></div><div class="actions"><button class="btn btn-secondary btn-sm" type="button" data-action="notifications-back"><i class="bi bi-arrow-left" aria-hidden="true"></i> ${originLabel}</button><button class="btn btn-secondary btn-sm" type="button" data-action="notifications" ${pending ? 'disabled' : ''}><i class="bi bi-arrow-clockwise" aria-hidden="true"></i> Atualizar</button><button class="btn btn-primary btn-sm" type="button" data-action="read-all-notifications" ${pending || !state.unreadCount ? 'disabled' : ''}>Marcar todas como lidas</button></div></div>
++      <div class="inbox-filters" role="group" aria-label="Filtrar notificações">${[['all', 'Todas'], ['unread', 'Não lidas'], ['read', 'Lidas']].map(([value, label]) => `<button class="btn btn-${filter === value ? 'primary' : 'secondary'} btn-sm" type="button" data-action="filter-notifications" data-filter="${value}" aria-pressed="${filter === value}">${label}</button>`).join('')}</div>
++      <p id="notificationsFeedback" class="${error ? 'notice notice-danger' : 'inbox-feedback'}" role="status" aria-live="polite">${error ? esc(error) : state.notificationsLoading ? 'Carregando notificações…' : state.notificationsWriting ? 'Salvando leitura…' : `${visible.length} ${visible.length === 1 ? 'notificação exibida' : 'notificações exibidas'}${state.notificationsHasMore && filter !== 'all' ? '. Filtro aplicado às notificações carregadas.' : '.'}`}</p>
++      <div class="inbox-list" aria-busy="${pending}">${visible.length ? visible.map(item => `<article class="inbox-item ${item.read_at ? 'is-read' : 'is-unread'}"><span class="inbox-icon"><i class="bi ${String(item.kind || '').includes('dispute') ? 'bi-chat-square-text' : String(item.kind || '').includes('payment') ? 'bi-currency-bitcoin' : item.order_id ? 'bi-box-seam' : 'bi-bell'}" aria-hidden="true"></i></span><div class="inbox-copy"><div class="inbox-item-heading"><h3>${esc(item.title)}</h3>${!item.read_at ? '<span class="inbox-unread-label">Não lida</span>' : ''}</div><p>${esc(item.body)}</p><time datetime="${esc(item.created_at || '')}">${esc(dateText(item.created_at))}</time></div><div class="inbox-actions">${item.order_id ? `<button class="btn btn-secondary btn-sm" type="button" data-action="notification-order" data-id="${idOf(item.order_id)}">Ver pedido <i class="bi bi-arrow-up-right" aria-hidden="true"></i></button>` : ''}${!item.read_at ? `<button class="btn btn-secondary btn-sm" type="button" data-action="read-notification" data-id="${idOf(item.id)}" ${pending ? 'disabled' : ''}><i class="bi bi-check2" aria-hidden="true"></i> Marcar lida</button>` : '<small>Lida</small>'}</div></article>`).join('') : state.notificationsLoading ? '<div class="empty">Buscando atualizações da conta.</div>' : `<div class="empty"><i class="bi bi-bell" aria-hidden="true"></i><h2>${filter === 'unread' ? 'Nenhuma não lida carregada' : filter === 'read' ? 'Nenhuma lida carregada' : 'Nenhuma notificação'}</h2><p>${state.notificationsHasMore ? 'Carregue anteriores para continuar consulta.' : 'Atualizações de pedidos e conta aparecem aqui.'}</p></div>`}</div>
++      ${state.notificationsHasMore ? `<div class="inbox-pagination"><button class="btn btn-secondary" type="button" data-action="older-notifications" data-before="${state.notificationsCursor}" ${pending ? 'disabled' : ''}>Carregar anteriores</button></div>` : ''}${error ? `<button class="btn btn-secondary" type="button" data-action="${state.notifications.length ? 'older-notifications' : 'notifications'}" data-before="${state.notificationsCursor}">Tentar novamente</button>` : ''}`;
+   }
+ 
+   async function markNotificationRead(id) {
+-    try { const data = await api(`/api/notifications/${idOf(id)}/read`, { method: 'POST', body: '{}' }); toast(data.message || 'Notificação marcada como lida.'); await openNotifications(); }
+-    catch (error) { toast(error.message, 'error'); }
++    if (state.notificationsWriting) return;
++    const sessionVersion = state.sessionVersion;
++    state.notificationsWriting = true;
++    renderNotifications();
++    try {
++      await api(`/api/notifications/${idOf(id)}/read`, { method: 'POST', body: '{}' });
++      if (sessionVersion !== state.sessionVersion) return;
++      state.notifications = state.notifications.map(item => idOf(item.id) === idOf(id) ? { ...item, read_at: item.read_at || true } : item);
++      await refreshNotificationBadge();
++      if (sessionVersion !== state.sessionVersion) return;
++      state.notificationsWriting = false;
++      renderNotifications();
++      focusUpdatedContent($('#notificationsContent'), null);
++    } catch (error) { if (sessionVersion === state.sessionVersion) { state.notificationsWriting = false; renderNotifications(error.message); } }
+   }
+ 
+   async function markAllNotificationsRead() {
+-    try { const data = await api('/api/notifications/read-all', { method: 'POST', body: '{}' }); toast(data.message || 'Notificações atualizadas.'); await openNotifications(); }
+-    catch (error) { toast(error.message, 'error'); }
++    if (state.notificationsWriting || !state.unreadCount) return;
++    const sessionVersion = state.sessionVersion;
++    state.notificationsWriting = true;
++    renderNotifications();
++    try {
++      await api('/api/notifications/read-all', { method: 'POST', body: '{}' });
++      if (sessionVersion !== state.sessionVersion) return;
++      state.notifications = state.notifications.map(item => ({ ...item, read_at: item.read_at || true }));
++      await refreshNotificationBadge();
++      if (sessionVersion !== state.sessionVersion) return;
++      state.notificationsWriting = false;
++      renderNotifications();
++      focusUpdatedContent($('#notificationsContent'), null);
++    } catch (error) { if (sessionVersion === state.sessionVersion) { state.notificationsWriting = false; renderNotifications(error.message); } }
+   }
+ 
+   function openDisputeThreadFromOrder(id) { openDispute(id); }
+@@ -1572,9 +2001,20 @@
+       case 'open-product': await openProduct(id); break;
+       case 'open-store': await openStore(id); break;
+       case 'add-cart': await addToCart(id); break;
+-      case 'add-current-product': await addToCart(id, $('#productQty')?.value || 1); break;
+-      case 'checkout': openCheckout(); break;
++      case 'add-current-product': await addCurrentProduct(button); break;
++      case 'buy-current-product': await addCurrentProduct(button, true); break;
++      case 'product-qty': {
++        const input = $('#productQty');
++        if (input) input.value = String(Math.max(1, Math.min(idOf(input.max), idOf(input.value) + num(button.dataset.delta))));
++        break;
++      }
++      case 'checkout': await openCheckout(); break;
++      case 'checkout-step': setCheckoutStep(button.dataset.step); break;
++      case 'checkout-back': saveCheckoutDraft(); showView('cart'); focusViewDestination('cart'); break;
++      case 'checkout-sync': await syncCheckoutOrder(id); break;
+       case 'checkout-orders': closeModal({ restoreFocus: false }); showView('account'); focusViewDestination('account'); break;
++      case 'refresh-account': await loadAccount(); break;
++      case 'reset-account-filters': state.accountSearch = ''; state.accountStatus = 'all'; renderAccount(); focusIfVisible($('#accountOrderSearch')); break;
+       case 'cart-remove': await updateCart(id, 0); break;
+       case 'cart-qty': {
+         const input = $(`[data-cart-qty="${id}"]`);
+@@ -1606,6 +2046,16 @@
+       case 'new-settlement-address': await createSettlementAddress(); break;
+       case 'consolidate': await consolidateTreasury(); break;
+       case 'distribute-reserves': await distributeReserves(); break;
++      case 'refresh-treasury': await loadAdmin(); break;
++      case 'treasury-section': {
++        const section = $(`#${CSS.escape(button.dataset.section || '')}`);
++        focusIfVisible(section);
++        section?.scrollIntoView({ behavior: 'smooth', block: 'start' });
++        break;
++      }
++      case 'select-reserve-destinations': $$('[data-reserve-dest]').forEach(input => { input.checked = true; }); updateReservePreview(); break;
++      case 'clear-reserve-destinations': $$('[data-reserve-dest]').forEach(input => { input.checked = false; }); updateReservePreview(); break;
++      case 'export-destinations': exportDestinations(); break;
+       case 'toggle-destination': await toggleDestination(id); break;
+       case 'toggle-user': await toggleUser(id); break;
+       case 'toggle-store': await toggleStore(id); break;
+@@ -1623,6 +2073,15 @@
+       case 'wallet-cancel': await cancelWalletTransfer(id); break;
+       case 'read-notification': await markNotificationRead(id); break;
+       case 'read-all-notifications': await markAllNotificationsRead(); break;
++      case 'filter-notifications': if (['all', 'unread', 'read'].includes(button.dataset.filter)) { state.notificationsFilter = button.dataset.filter; renderNotifications(); focusIfVisible($(`[data-action="filter-notifications"][data-filter="${state.notificationsFilter}"]`)); } break;
++      case 'notifications-back': {
++        const target = state.notificationsReturn || { view: 'account' };
++        if (target.sellerTab) state.sellerTab = target.sellerTab;
++        if (target.adminTab) state.adminTab = target.adminTab;
++        showView(target.view);
++        focusViewDestination(target.view);
++        break;
++      }
+       case 'older-notifications': await openNotifications(button.dataset.before); break;
+       case 'notification-order': await openNotificationsOrder(id); break;
+       case 'manage-psbt': await managePsbt(id); break;
+@@ -1631,6 +2090,17 @@
+       case 'order-psbt-signed': submitOrderPsbtSignature(id, idOf(button.dataset.order)); break;
+       case 'order-psbt-broadcast': await broadcastOrderPsbt(id, idOf(button.dataset.order)); break;
+       case 'admin-refund': await adminRefund(id); break;
++      case 'toggle-public-key': {
++        const field = $(`#${CSS.escape(button.dataset.keyTarget || '')}`);
++        if (!field) break;
++        const show = field.type === 'password';
++        field.type = show ? 'text' : 'password';
++        button.textContent = show ? 'Ocultar' : 'Mostrar';
++        button.setAttribute('aria-pressed', String(show));
++        button.setAttribute('aria-label', `${show ? 'Ocultar' : 'Mostrar'} chave pública`);
++        break;
++      }
++      case 'copy-field': await copyText($(`#${CSS.escape(button.dataset.field || '')}`)?.value || ''); break;
+       default: break;
+     }
+   }
+@@ -1653,9 +2123,21 @@
+     }
+     const scrollButton = event.target.closest('[data-scroll]');
+     if (scrollButton) {
++      event.preventDefault();
+       const target = $(`#${CSS.escape(scrollButton.dataset.scroll)}`);
++      if (!target) return;
++      if (target.closest('#howView') && state.activeView !== 'how') showView('how', { scroll: false });
++      else if (target.closest('#homeView') && state.activeView !== 'home') showView('home', { scroll: false });
++      focusIfVisible(target);
+       target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+       closeMobileMenu();
++      return;
++    }
++    const productSection = event.target.closest('[data-product-section]');
++    if (productSection) {
++      const target = $(`#${CSS.escape(productSection.dataset.productSection || '')}`);
++      focusIfVisible(target);
++      target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+       return;
+     }
+     const sellerTab = event.target.closest('[data-seller-tab]');
+@@ -1760,11 +2242,22 @@
+     if (event.target.matches('[data-cart-qty]')) updateCart(idOf(event.target.dataset.cartQty), idOf(event.target.value));
+     if (['categoryFilter', 'sortFilter'].includes(event.target.id)) loadProducts();
+     if (event.target.id === 'registerRole') state.authRole = event.target.value;
+-    if (event.target.matches('input[name="payment_method"]')) $('#multisigCheckoutFields')?.classList.toggle('hidden', event.target.value === 'lightning' && event.target.checked);
++    if (event.target.matches('input[name="payment_method"]')) {
++      $('#multisigCheckoutFields')?.classList.toggle('hidden', event.target.value === 'lightning' && event.target.checked);
++      saveCheckoutDraft();
++    }
++    if (event.target.id === 'accountOrderStatus') { state.accountStatus = event.target.value; renderAccountOrders(); }
++    if (event.target.matches('[data-reserve-dest]')) updateReservePreview();
++    if (event.target.id === 'treasuryDestinationFilter') { state.treasuryFilter = event.target.value; $('#treasuryDestinationResults').innerHTML = destinationsTable(filteredDestinations()); }
+   });
+ 
+   document.addEventListener('input', event => {
+     if (['priceMin', 'priceMax', 'inStockFilter'].includes(event.target.id)) renderProducts();
++    if (event.target.closest('#checkoutForm')) saveCheckoutDraft();
++    if (event.target.id === 'accountOrderSearch') { state.accountSearch = event.target.value; renderAccountOrders(); }
++    if (event.target.id === 'reserveAmount') updateReservePreview();
++    if (event.target.id === 'treasuryDestinationSearch') { state.treasurySearch = event.target.value; $('#treasuryDestinationResults').innerHTML = destinationsTable(filteredDestinations()); }
++    if (event.target.id === 'profilePubkey') updateProfileKeyFeedback();
+   });
+ 
+   document.addEventListener('error', event => {
+--- a/templates/index.html
++++ b/templates/index.html
+@@ -14,6 +14,7 @@
+   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+   <link rel="stylesheet" href="{{ url_for('static', filename='css/cart.css') }}">
+   <link rel="stylesheet" href="{{ url_for('static', filename='css/glass.css') }}">
++  <link rel="stylesheet" href="{{ url_for('static', filename='css/experience.css') }}">
+   <script defer src="{{ url_for('static', filename='js/bitloja.js') }}"></script>
+ </head>
+ <body data-btc-network="{{ btc_network|e }}" data-btc-mode="{{ btc_mode|e }}">
+@@ -27,7 +28,7 @@
+       <nav class="primary-nav" id="primaryNav" aria-label="Navegação principal">
+         <button class="nav-link active" type="button" data-view="home">Início</button>
+         <button class="nav-link" type="button" data-view="catalog">Produtos</button>
+-        <button class="nav-link" type="button" data-scroll="howItWorks">Como funciona</button>
++        <button class="nav-link" type="button" data-view="how">Como funciona</button>
+         <button class="nav-link" type="button" data-view="reviews">Avaliações</button>
+       </nav>
+       <span class="network-status" title="Configuração atual do servidor">{{ btc_network|e }} · {{ btc_mode|e }}</span>
+@@ -35,7 +36,7 @@
+         <button class="icon-button search-toggle" id="searchToggle" type="button" data-action="search-toggle" aria-label="Abrir busca" aria-expanded="false" aria-controls="searchForm">
+           <i class="bi bi-search" aria-hidden="true"></i>
+         </button>
+-        <button class="icon-button notifications-button hidden" id="notificationsBtn" type="button" data-action="notifications" aria-label="Notificações" aria-haspopup="dialog">
++        <button class="icon-button notifications-button hidden" id="notificationsBtn" type="button" data-action="notifications" aria-label="Notificações" aria-controls="notificationsView">
+           <i class="bi bi-bell" aria-hidden="true"></i><span class="notification-dot hidden" id="notificationBadge" aria-label="Notificações não lidas"></span>
+         </button>
+         <button class="header-button" id="accountBtn" type="button" data-action="account-menu" aria-haspopup="dialog">
+@@ -82,18 +83,6 @@
+         </div>
+       </div>
+ 
+-      <section class="section shell how-section" id="howItWorks">
+-        <div class="section-heading">
+-          <div><p class="eyebrow"><span class="eyebrow-rule" aria-hidden="true"></span> Pagamento e pedido</p><h2>Como funciona</h2></div>
+-          <p>Cada etapa acompanha o estado real devolvido pelo servidor.</p>
+-        </div>
+-        <div class="how-grid">
+-          <article class="how-card"><span class="how-number">01</span><i class="bi bi-bag-check" aria-hidden="true"></i><h3>Escolha seus produtos</h3><p>O carrinho separa itens por loja antes do checkout.</p></article>
+-          <article class="how-card"><span class="how-number">02</span><i class="bi bi-currency-bitcoin" aria-hidden="true"></i><h3>Selecione pagamento</h3><p>Escrow on-chain 2-de-3 ou Lightning, quando habilitado.</p></article>
+-          <article class="how-card"><span class="how-number">03</span><i class="bi bi-box-seam" aria-hidden="true"></i><h3>Acompanhe o pedido</h3><p>Veja pagamentos, mensagens e atualizações de entrega.</p></article>
+-        </div>
+-      </section>
+-
+       <section class="section shell home-products" id="productsSection">
+         <div class="section-heading">
+           <div><p class="eyebrow"><span class="eyebrow-rule" aria-hidden="true"></span> Vitrine</p><h2>Produtos em destaque</h2></div>
+@@ -108,6 +97,29 @@
+           <p>Informações e avaliações exibidas conforme dados disponíveis.</p>
+         </div>
+         <div class="store-grid" id="storeGrid" aria-live="polite"></div>
++      </section>
++    </section>
++
++    <section class="page how-page hidden" id="howView" aria-labelledby="howItWorksTitle">
++      <section class="section shell how-section" id="howItWorks" tabindex="-1" aria-labelledby="howItWorksTitle">
++        <div class="section-heading">
++          <div><p class="eyebrow"><span class="eyebrow-rule" aria-hidden="true"></span> Do carrinho à entrega</p><h1 id="howItWorksTitle" tabindex="-1">Como funciona.</h1></div>
++          <p>Escolha, revise, pague e acompanhe. Um pedido por loja, sempre em Bitcoin.</p>
++        </div>
++        <div class="how-grid">
++          <article class="how-card"><span class="how-number">01</span><i class="bi bi-bag-check" aria-hidden="true"></i><h3>Monte carrinho</h3><p>Veja preço em BTC, estoque e vendedor. Revise quantidades antes de continuar.</p></article>
++          <article class="how-card"><span class="how-number">02</span><i class="bi bi-geo-alt" aria-hidden="true"></i><h3>Revise checkout</h3><p>Informe entrega e escolha escrow on-chain 2-de-3 ou Lightning, se habilitado.</p></article>
++          <article class="how-card"><span class="how-number">03</span><i class="bi bi-currency-bitcoin" aria-hidden="true"></i><h3>Pague cada pedido</h3><p>Copie endereço ou invoice. Cada loja recebe pedido próprio com total confirmado pelo servidor.</p></article>
++          <article class="how-card"><span class="how-number">04</span><i class="bi bi-box-seam" aria-hidden="true"></i><h3>Acompanhe entrega</h3><p>Consulte pagamento, rastreio e mensagens. Após conclusão, publique avaliação do produto.</p></article>
++        </div>
++        <div class="how-faq" aria-label="Dúvidas sobre compra e pagamento">
++          <details><summary>Por que recebo mais de um pedido?</summary><p>Itens do carrinho são separados por loja. Cada pedido tem total, pagamento, entrega e histórico próprios.</p></details>
++          <details><summary>Como funciona escrow 2-de-3?</summary><p>Comprador, vendedor e mediador participam com chaves públicas. Liberação ou devolução usa proposta PSBT assinada por dois participantes em carteiras externas.</p></details>
++          <details><summary>Lightning usa mesmo escrow?</summary><p>Não. Lightning comum é custodial pelo nó da plataforma e não herda escrow on-chain. <span id="howLightningStatus">Disponibilidade aparece no checkout.</span></p></details>
++          <details><summary>Quando pagamento fica confirmado?</summary><p>Copiar endereço ou criar pedido não confirma pagamento. Consulte estado devolvido pelo servidor em detalhes do pedido.</p></details>
++          <details><summary>Onde resolvo problema com pedido?</summary><p>Abra detalhes em Pedidos. Disputas disponíveis no estado do pedido mantêm conversa e decisão registradas; reembolso on-chain segue fluxo PSBT próprio.</p></details>
++        </div>
++        <div class="actions how-actions"><button class="btn btn-primary" type="button" data-action="catalog">Explorar produtos <i class="bi bi-arrow-right" aria-hidden="true"></i></button><button class="btn btn-secondary" type="button" data-view="custody">Entender caminhos Bitcoin</button></div>
+       </section>
+     </section>
+ 
+@@ -141,7 +153,7 @@
+ 
+     <section class="page account-page hidden" id="accountView">
+       <div class="shell page-shell">
+-        <div class="page-intro"><div><p class="eyebrow"><span class="eyebrow-rule" aria-hidden="true"></span> Sua conta</p><h1>Seus pedidos.</h1></div><p>Acompanhe pagamentos, entrega, avaliações e disputas.</p></div>
++        <div class="page-intro"><div><p class="eyebrow"><span class="eyebrow-rule" aria-hidden="true"></span> Sua conta</p><h1 id="accountTitle">Seus pedidos.</h1></div><p id="accountDescription">Acompanhe pagamentos, entrega, avaliações e disputas.</p></div>
+         <div id="accountContent" aria-live="polite"></div>
+       </div>
+     </section>
+@@ -158,6 +170,20 @@
+           <div class="cart-lines" id="cartLines" aria-live="polite"></div>
+           <aside class="cart-summary" id="cartSummary" aria-label="Resumo do pedido"></aside>
+         </div>
++      </div>
++    </section>
++
++    <section class="page checkout-page hidden" id="checkoutView" aria-labelledby="checkoutTitle">
++      <div class="shell page-shell checkout-shell">
++        <div class="page-intro"><div><p class="eyebrow"><span class="eyebrow-rule" aria-hidden="true"></span> Compra em Bitcoin</p><h1 id="checkoutTitle">Finalize com clareza.</h1></div><button class="text-link" type="button" data-action="checkout-back"><i class="bi bi-arrow-left" aria-hidden="true"></i> Voltar ao carrinho</button></div>
++        <div id="checkoutContent" tabindex="-1" aria-live="polite"></div>
++      </div>
++    </section>
++
++    <section class="page inbox-page notifications-page hidden" id="notificationsView" aria-labelledby="notificationsTitle">
++      <div class="shell page-shell inbox-shell">
++        <div class="page-intro"><div><p class="eyebrow"><span class="eyebrow-rule" aria-hidden="true"></span> Atualizações da conta</p><h1 id="notificationsTitle">Notificações.</h1></div><p>Pedidos, pagamentos e conversas em uma caixa de entrada.</p></div>
++        <div id="notificationsContent" tabindex="-1"></div>
+       </div>
+     </section>
+ 
+--- /dev/null
++++ b/tests/experience_flows.test.cjs
+@@ -0,0 +1,332 @@
++const assert = require('node:assert/strict');
++const fs = require('node:fs');
++const path = require('node:path');
++const vm = require('node:vm');
++
++const root = path.resolve(__dirname, '..');
++const sourcePath = process.argv[2] ? path.resolve(process.argv[2]) : path.join(root, 'static/js/bitloja.js');
++const source = fs.readFileSync(sourcePath, 'utf8');
++const exportsToTest = ['state', 'config', 'api', 'download', 'resetPrivateState', 'productImage', 'renderAccount', 'renderAccountOrders', 'openCheckout', 'submitCheckout', 'renderCheckoutOrders', 'openNotifications', 'markNotificationRead', 'markAllNotificationsRead', 'calculateReserveAllocation', 'btcStringToSats', 'satsToBtcText', 'treasurySection', 'updateProfileKeyFeedback'];
++for (const name of exportsToTest.filter(name => !['state', 'config'].includes(name))) {
++  assert.match(source, new RegExp(`function ${name}\\(`), `Missing experience flow: ${name}`);
++}
++
++class Node {
++  constructor(id = '') {
++    this.id = id;
++    this.innerHTML = '';
++    this.textContent = '';
++    this.value = '';
++    this.type = 'text';
++    this.isConnected = true;
++    this.dataset = {};
++    this.attributes = new Map();
++    this.selectors = new Map();
++    this.lists = new Map();
++    this.closestNodes = new Map();
++    this.disabled = false;
++    this.classList = { toggle() {}, add() {}, remove() {} };
++  }
++  querySelector(selector) { return this.selectors.get(selector) || null; }
++  querySelectorAll(selector) { return this.lists.get(selector) || []; }
++  closest(selector) { return this.closestNodes.get(selector) || null; }
++  matches() { return true; }
++  setAttribute(key, value) { this.attributes.set(key, value); }
++  getAttribute(key) { return this.attributes.get(key) || null; }
++  removeAttribute(key) { this.attributes.delete(key); }
++  replaceChildren() { this.innerHTML = ''; }
++  append() {}
++  addEventListener() {}
++  click() {}
++  remove() { this.isConnected = false; }
++  focus() { document.activeElement = this; }
++  scrollIntoView(options) { this.scrollOptions = options; }
++  checkValidity() { return true; }
++  reportValidity() { return true; }
++}
++
++const nodes = new Map();
++const handlers = new Map();
++let downloadClicks = 0;
++let downloadLinks = 0;
++let blobUrls = 0;
++let lastDownloadLink = null;
++const node = selector => {
++  if (!nodes.has(selector)) nodes.set(selector, new Node(selector.replace(/^#/, '')));
++  return nodes.get(selector);
++};
++const document = {
++  body: new Node('body'),
++  activeElement: null,
++  querySelector: node,
++  querySelectorAll: () => [],
++  createElement: tag => {
++    const element = new Node();
++    if (tag === 'a') { downloadLinks += 1; lastDownloadLink = element; element.click = () => { downloadClicks += 1; }; }
++    return element;
++  },
++  addEventListener: (event, handler) => handlers.set(event, handler)
++};
++document.body.dataset = { btcMode: 'demo', btcNetwork: 'regtest' };
++document.activeElement = document.body;
++class FormDataFixture {
++  constructor(form) { this.values = Object.entries(form.fieldValues || {}); }
++  [Symbol.iterator]() { return this.values[Symbol.iterator](); }
++}
++const requests = [];
++let responses = [];
++const fetchFixture = async (url, options) => {
++  requests.push({ url: String(url), options });
++  const entry = responses.shift();
++  if (typeof entry === 'function') return entry(url, options);
++  if (!entry) throw new Error(`Unexpected request ${url}`);
++  return response(entry);
++};
++const response = data => ({ ok: !data.error, status: data.error ? 400 : 200, headers: new Headers({ 'content-type': 'application/json' }), json: async () => data });
++class URLFixture extends URL {
++  static createObjectURL() { blobUrls += 1; return 'blob:fixture'; }
++  static revokeObjectURL() {}
++}
++const context = {
++  document, HTMLElement: Node, HTMLFormElement: Node, HTMLImageElement: Node, Element: Node,
++  window: { scrollTo: options => { context.lastScroll = options; }, setTimeout: () => 0, crypto: { randomUUID: () => 'test-id' } },
++  location: { origin: 'http://localhost' }, navigator: {}, CSS: { escape: String },
++  Headers, URL: URLFixture, URLSearchParams, Blob, FormData: FormDataFixture, fetch: fetchFixture, console
++};
++const injected = source.replace(/  renderSession\(\);\s*bootstrap\(\);\s*\}\)\(\);\s*$/, `  globalThis.experience = { ${exportsToTest.join(', ')} };\n})();`);
++assert.notEqual(injected, source, 'Test injection must replace startup only');
++vm.runInNewContext(injected, context, { filename: sourcePath });
++const x = context.experience;
++const plain = value => JSON.parse(JSON.stringify(value));
++const tests = [];
++const test = (name, run) => tests.push({ name, run });
++const user = { id: 1, role: 'buyer', name: 'Comprador', email: 'buyer@example.test' };
++const shipping = {
++  payment_method: 'onchain_multisig', buyer_pubkey: '', shipping_name: 'Comprador', shipping_zip: '01001-000',
++  shipping_address: 'Rua de teste, 10', shipping_city: 'São Paulo', shipping_state: 'SP', buyer_refund_address: ''
++};
++
++test('integer sats reject precision loss and invalid decimals', () => {
++  assert.equal(x.btcStringToSats('0.00000001'), 1n);
++  assert.equal(x.btcStringToSats('1.5'), 150000000n);
++  assert.equal(x.btcStringToSats('90071992.54740993'), 9007199254740993n);
++  for (const value of ['1e-8', '-1', '1.000000001', 'a', '.1']) assert.equal(x.btcStringToSats(value), null);
++  assert.equal(x.satsToBtcText(1n), '0.00000001');
++});
++test('weighted allocation matches backend floor and final remainder', () => {
++  const allocation = x.calculateReserveAllocation('0.00000010', [{ id: 3, weight: 3 }, { id: 1, weight: 1 }, { id: 2, weight: 2 }]);
++  assert.deepEqual(Array.from(allocation, item => [item.id, item.sats]), [[1, 1n], [2, 3n], [3, 6n]]);
++  assert.equal(allocation.reduce((total, item) => total + item.sats, 0n), 10n);
++  const large = x.calculateReserveAllocation('90071992.54740993', [{ id: 1, weight: 1 }, { id: 2, weight: 1 }]);
++  assert.equal(large.reduce((total, item) => total + item.sats, 0n), 9007199254740993n);
++  assert.equal(x.calculateReserveAllocation('0', [{ id: 1, weight: 1 }]).length, 0);
++});
++test('unknown hardware never receives unrelated SSD photo', () => {
++  assert.equal(x.productImage({ name: 'Cabo USB', category: 'Hardware' }), '');
++  assert.equal(x.productImage({ name: 'Cabo USB', image_url: '/static/uploads/cabo.webp' }), '/static/uploads/cabo.webp');
++  assert.equal(x.productImage({ name: 'SSD NVMe 1 TB' }), '/static/assets/products/ssd.webp');
++  assert.equal(x.productImage({ name: 'SSD genérico' }), '');
++});
++test('checkout and inbox never invoke modal renderer', () => {
++  for (const fn of [x.openCheckout, x.submitCheckout, x.renderCheckoutOrders, x.openNotifications]) assert.doesNotMatch(fn.toString(), /openModal\(/);
++});
++test('account uses real counts and searchable order cards', () => {
++  x.state.user = user;
++  x.state.accountOrders = [{ id: 9, reference: 'BL-009', store_name: 'Loja A', status: 'shipped', total_btc: '0.00100000', payment_method: 'onchain_multisig' }, { id: 10, reference: 'BL-010', store_name: 'Loja B', status: 'completed', total_btc: '0.00200000' }];
++  x.renderAccount();
++  assert.match(node('#accountContent').innerHTML, /Aguardando BTC/);
++  assert.match(node('#accountOrders').innerHTML, /BL-009/);
++  x.state.accountSearch = 'loja b';
++  x.renderAccountOrders();
++  assert.doesNotMatch(node('#accountOrders').innerHTML, /BL-009/);
++  assert.match(node('#accountOrders').innerHTML, /BL-010/);
++  assert.equal(node('#accountResultCount').textContent, '1 pedido');
++  x.state.accountStatus = 'cancelled';
++  x.renderAccountOrders();
++  assert.match(node('#accountOrders').innerHTML, /Nenhum pedido encontrado/);
++});
++test('checkout fetches current cart and preserves named payload fields', async () => {
++  x.state.user = user;
++  x.state.checkoutDraft = { ...shipping };
++  responses = [{ items: [{ id: 2, name: 'Produto real', quantity: 2, price_btc: '0.00000010', line_total_btc: '0.00000020', store_name: 'Loja A' }], count: 2, total_btc: '0.00000020' }];
++  await x.openCheckout();
++  assert.equal(requests.at(-1).url, '/api/cart');
++  for (const field of Object.keys(shipping)) assert.match(node('#checkoutContent').innerHTML, new RegExp(`name="${field}"`));
++  assert.match(node('#checkoutContent').innerHTML, /Produto real/);
++  assert.match(node('#checkoutContent').innerHTML, /0\.00000020/);
++});
++test('checkout double submit sends one request and awaits payment', async () => {
++  const form = node('#checkoutForm');
++  form.fieldValues = { ...shipping };
++  x.state.checkoutStep = 'review';
++  let finish;
++  responses = [() => new Promise(resolve => { finish = resolve; })];
++  const start = requests.length;
++  const event = { preventDefault() {}, currentTarget: form };
++  const first = x.submitCheckout(event);
++  await x.submitCheckout(event);
++  assert.equal(requests.length - start, 1);
++  assert.deepEqual(JSON.parse(requests.at(-1).options.body), shipping);
++  finish(response({ orders: [{ id: 88, reference: 'BL-088', payment_method: 'onchain_multisig', payment_address: 'bcrt1qfixture', total_btc: '0.00000020' }] }));
++  await first;
++  assert.equal(x.state.checkoutPending, false);
++  assert.match(node('#checkoutContent').innerHTML, /Aguardando pagamento/);
++  assert.match(node('#checkoutContent').innerHTML, /bcrt1qfixture/);
++  assert.doesNotMatch(node('#checkoutContent').innerHTML, /Pagamento confirmado/);
++});
++test('checkout server error remains inline and keeps draft', async () => {
++  const form = node('#checkoutForm');
++  form.fieldValues = { ...shipping };
++  x.state.checkoutStep = 'review';
++  responses = [{ error: 'Estoque mudou. Revise carrinho.' }];
++  await x.submitCheckout({ preventDefault() {}, currentTarget: form });
++  assert.equal(node('#checkoutFeedback').textContent, 'Estoque mudou. Revise carrinho.');
++  assert.deepEqual(plain(x.state.checkoutDraft), shipping);
++  assert.equal(x.state.checkoutPending, false);
++});
++test('notification pages dedupe by id and use latest page length', async () => {
++  x.state.activeView = 'account';
++  x.state.notificationsLoading = false;
++  const page = Array.from({ length: 50 }, (_, index) => ({ id: 100 - index, title: `Item ${index}`, body: '', read_at: null }));
++  responses = [{ notifications: page, unread_count: 50 }, { notifications: [{ id: 51, title: 'Repeated' }, { id: 50, title: 'Older' }], unread_count: 51 }];
++  await x.openNotifications();
++  assert.equal(x.state.notificationsHasMore, true);
++  assert.equal(x.state.notificationsCursor, 51);
++  await x.openNotifications(51);
++  assert.equal(x.state.notifications.length, 51);
++  assert.equal(x.state.notificationsHasMore, false);
++  assert.match(requests.at(-1).url, /before_id=51/);
++  assert.match(node('#notificationsContent').innerHTML, /51 carregadas/);
++});
++test('notification read preserves loaded pages and confirms badge server-side', async () => {
++  const length = x.state.notifications.length;
++  responses = [{ message: 'Lida' }, { notifications: [], unread_count: 50 }];
++  await x.markNotificationRead(50);
++  assert.equal(x.state.notifications.length, length);
++  assert.equal(Boolean(x.state.notifications.find(item => item.id === 50).read_at), true);
++  assert.equal(x.state.unreadCount, 50);
++});
++test('treasury direct actions gated by RPC plus hot signing', () => {
++  const data = { destinations: [{ id: 1, label: 'Reserva A', address: 'bcrt1qfixture', weight: 1, active: true }], wallet: { status: 'online', utxos: 2 } };
++  x.config.btcMode = 'rpc';
++  x.config.commissionSigningMode = 'psbt';
++  const offline = x.treasurySection(data);
++  assert.match(offline, /data-action="consolidate" disabled/);
++  assert.match(offline, /data-action="distribute-reserves" disabled/);
++  assert.match(offline, /Abrir PSBT de comissão/);
++  assert.match(offline, /Prévia local — servidor confirma divisão e taxas/);
++  x.config.commissionSigningMode = 'hot';
++  const hot = x.treasurySection(data);
++  assert.doesNotMatch(hot, /data-action="consolidate" disabled/);
++  x.config.btcMode = 'demo';
++  assert.match(x.treasurySection(data), /data-action="distribute-reserves" disabled/);
++});
++test('public key format feedback does not claim backend validation', () => {
++  node('#profilePubkey').value = '02' + 'a'.repeat(64);
++  x.updateProfileKeyFeedback();
++  assert.match(node('#profileKeyFeedback').textContent, /Servidor valida chave ao salvar/);
++  node('#profilePubkey').value = 'seed';
++  x.updateProfileKeyFeedback();
++  assert.match(node('#profileKeyFeedback').textContent, /4\/66/);
++});
++test('legacy Como funciona action reveals dedicated page before scrolling', () => {
++  const button = new Node();
++  button.dataset.scroll = 'howItWorks';
++  button.closestNodes.set('[data-scroll]', button);
++  const section = node('#howItWorks');
++  section.closestNodes.set('#howView', node('#howView'));
++  x.state.activeView = 'account';
++  context.lastScroll = null;
++  handlers.get('click')({ target: button, preventDefault() {} });
++  assert.equal(x.state.activeView, 'how');
++  assert.equal(context.lastScroll, null);
++  assert.equal(section.scrollOptions.block, 'start');
++  assert.equal(document.activeElement, section);
++});
++test('dedicated Como funciona navigation focuses heading from every prior view', () => {
++  const button = new Node();
++  button.dataset.view = 'how';
++  button.closestNodes.set('[data-view]', button);
++  for (const prior of ['home', 'catalog', 'product', 'account', 'admin']) {
++    x.state.activeView = prior;
++    handlers.get('click')({ target: button, preventDefault() {} });
++    assert.equal(x.state.activeView, 'how');
++    assert.equal(document.activeElement, node('#howItWorksTitle'));
++    assert.equal(context.lastScroll.top, 0);
++  }
++});
++test('session change wipes private state and ignores late inbox response', async () => {
++  x.state.activeView = 'account';
++  let finish;
++  responses = [() => new Promise(resolve => { finish = resolve; })];
++  const pending = x.openNotifications();
++  x.state.checkoutDraft = { shipping_name: 'Previous account' };
++  x.state.checkoutOrders = [{ id: 88 }];
++  x.resetPrivateState();
++  x.state.user = { ...user, id: 2 };
++  finish(response({ notifications: [{ id: 999, title: 'Previous account data' }], unread_count: 10 }));
++  await pending;
++  assert.equal(x.state.checkoutDraft, null);
++  assert.equal(x.state.checkoutOrders.length, 0);
++  assert.equal(x.state.accountOrders.length, 0);
++  assert.equal(x.state.notifications.length, 0);
++  assert.equal(node('#notificationsContent').innerHTML, '');
++});
++test('PSBT download rejects response arriving after account switch', async () => {
++  x.state.user = user;
++  let finishFetch;
++  const counts = [downloadClicks, downloadLinks, blobUrls];
++  responses = [() => new Promise(resolve => { finishFetch = resolve; })];
++  const pending = x.download('/api/wallet/transfers/1/download', 'private.psbt');
++  x.resetPrivateState();
++  x.state.user = { ...user, id: 2 };
++  finishFetch({ ok: true, headers: new Headers(), blob: async () => new Blob(['private fixture']) });
++  await assert.rejects(pending, /Sessão atualizada/);
++  assert.deepEqual([downloadClicks, downloadLinks, blobUrls], counts);
++});
++test('PSBT download rejects account switch during blob read', async () => {
++  x.state.user = user;
++  let finishBlob;
++  const counts = [downloadClicks, downloadLinks, blobUrls];
++  responses = [() => ({ ok: true, headers: new Headers(), blob: () => new Promise(resolve => { finishBlob = resolve; }) })];
++  const pending = x.download('/api/psbts/1/download', 'private.psbt');
++  await new Promise(resolve => setImmediate(resolve));
++  assert.equal(typeof finishBlob, 'function');
++  x.resetPrivateState();
++  x.state.user = { ...user, id: 2 };
++  finishBlob(new Blob(['private fixture']));
++  await assert.rejects(pending, /Sessão atualizada/);
++  assert.deepEqual([downloadClicks, downloadLinks, blobUrls], counts);
++});
++test('PSBT download preserves same-session credentials and download behavior', async () => {
++  const counts = [downloadClicks, downloadLinks, blobUrls];
++  responses = [() => ({ ok: true, headers: new Headers({ 'content-disposition': 'attachment; filename="server.psbt"' }), blob: async () => new Blob(['fixture']) })];
++  await x.download('/api/admin/commission/transfers/1/download', 'fallback.psbt');
++  assert.deepEqual([downloadClicks, downloadLinks, blobUrls], counts.map(count => count + 1));
++  assert.equal(requests.at(-1).options.credentials, 'same-origin');
++  assert.equal(requests.at(-1).options.headers['X-CSRF-Token'], x.state.csrf);
++  assert.equal(lastDownloadLink.download, 'server.psbt');
++  assert.equal(lastDownloadLink.isConnected, false);
++});
++test('template exposes standalone pages and last experience stylesheet', () => {
++  const template = fs.readFileSync(path.join(root, 'templates/index.html'), 'utf8');
++  for (const id of ['checkoutView', 'checkoutContent', 'notificationsView', 'notificationsContent', 'accountTitle', 'accountDescription', 'howView', 'howItWorks', 'howItWorksTitle']) assert.match(template, new RegExp(`id="${id}"`));
++  assert.match(template, /data-view="how">Como funciona/);
++  assert.match(template, /<h1 id="howItWorksTitle"/);
++  const home = template.slice(template.indexOf('id="homeView"'), template.indexOf('id="howView"'));
++  assert.doesNotMatch(home, /id="howItWorks"|class="how-card"|class="how-faq"/);
++  const how = template.slice(template.indexOf('id="howView"'), template.indexOf('id="catalogView"'));
++  assert.equal((how.match(/class="how-card"/g) || []).length, 4);
++  assert.equal((how.match(/<details>/g) || []).length, 5);
++  assert.ok(template.indexOf('css/experience.css') > template.indexOf('css/glass.css'));
++  const ids = [...template.matchAll(/\bid="([^"]+)"/g)].map(match => match[1]);
++  assert.equal(new Set(ids).size, ids.length, 'Template IDs must be unique');
++});
++
++(async () => {
++  for (const { name, run } of tests) {
++    await run();
++    console.log(`PASS ${name}`);
++  }
++  console.log(`EXPERIENCE_FLOWS_OK ${tests.length}/${tests.length}`);
++})().catch(error => { console.error(error); process.exitCode = 1; });

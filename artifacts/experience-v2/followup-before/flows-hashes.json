@@ -1,0 +1,12 @@
+[
+  {
+    "path": "static\\js\\bitloja.js",
+    "sha256": "AA13D8E0C086CF8896223C5FBB1BAEC8AB352B6C3E0DD5F47A4C664170F86E7A",
+    "bytes": 199326
+  },
+  {
+    "path": "templates\\index.html",
+    "sha256": "001A2E3EC9215613CC19F79C4247FE65C3F38E49E6C664B005D3C1922390E7AE",
+    "bytes": 29671
+  }
+]

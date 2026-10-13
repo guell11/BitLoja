@@ -1,0 +1,20 @@
+PASS integer sats reject precision loss and invalid decimals
+PASS weighted allocation matches backend floor and final remainder
+PASS unknown hardware never receives unrelated SSD photo
+PASS checkout and inbox never invoke modal renderer
+PASS account uses real counts and searchable order cards
+PASS checkout fetches current cart and preserves named payload fields
+PASS checkout double submit sends one request and awaits payment
+PASS checkout server error remains inline and keeps draft
+PASS notification pages dedupe by id and use latest page length
+PASS notification read preserves loaded pages and confirms badge server-side
+PASS treasury direct actions gated by RPC plus hot signing
+PASS public key format feedback does not claim backend validation
+PASS legacy Como funciona action reveals dedicated page before scrolling
+PASS dedicated Como funciona navigation focuses heading from every prior view
+PASS session change wipes private state and ignores late inbox response
+PASS PSBT download rejects response arriving after account switch
+PASS PSBT download rejects account switch during blob read
+PASS PSBT download preserves same-session credentials and download behavior
+PASS template exposes standalone pages and last experience stylesheet
+EXPERIENCE_FLOWS_OK 19/19

@@ -1,0 +1,10 @@
+.env
+__pycache__/
+*.py[cod]
+.venv/
+.runtime/
+artifacts/redesign/*.db*
+artifacts/redesign/**/preview*.log
+artifacts/redesign/**/preview*.out
+artifacts/redesign/snapshots/*.png
+artifacts/redesign/**/snapshot-*.png

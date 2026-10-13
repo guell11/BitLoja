@@ -1,0 +1,957 @@
+diff --git a/artifacts/redesign/build_release.py b/artifacts/redesign/build_release.py
+new file mode 100644
+--- /dev/null
++++ b/artifacts/redesign/build_release.py
+@@ -0,0 +1,359 @@
++#!/usr/bin/env python3
++"""Build reproducible BitLoja release archive and its SHA-256 manifest."""
++
++from __future__ import annotations
++
++import argparse
++import difflib
++import hashlib
++import json
++import os
++import tempfile
++import zipfile
++from pathlib import Path, PurePosixPath
++
++
++SCRIPT_DIR = Path(__file__).resolve().parent
++REPO_ROOT = SCRIPT_DIR.parents[1]
++BASELINE_DIR = SCRIPT_DIR / "baseline"
++BASELINE_SUMS = BASELINE_DIR / "SHA256SUMS.txt"
++BASELINE_SUMS_SHA256 = "CAE4B21E4FC7A20856ECCE651123B11ABB616A8F99012400D7834D547D2E1951"
++MANIFEST_PATH = SCRIPT_DIR / "release-manifest.json"
++MANIFEST_PIN_PATH = SCRIPT_DIR / "release-manifest.sha256"
++ARCHIVE_PATH = SCRIPT_DIR / "MODIFIED_FILE.zip"
++DIFF_PATH = SCRIPT_DIR / "DIFF_FILE.patch"
++
++ROOT_FILES = (
++    ".gitignore",
++    "app.py",
++    "marketplace_features.py",
++    "README.md",
++    "requirements.txt",
++    "env.example",
++    "LICENSE",
++    "run.bat",
++    "run.sh",
++    "bitcoin.conf.example",
++    "lnd.conf.example",
++    "design-qa.md",
++)
++SOURCE_DIRS = ("templates", "static", "docs", "tests")
++BASELINE_PATHS = {
++    "app.py",
++    "templates/index.html",
++    "env.example",
++    "README.md",
++    "requirements.txt",
++}
++UNCHANGED_TRACKED_FILES = {
++    "LICENSE",
++    "bitcoin.conf.example",
++    "lnd.conf.example",
++    "run.bat",
++    "run.sh",
++    "docs/screenshots/admin.png",
++    "docs/screenshots/home.png",
++    "docs/screenshots/product.png",
++}
++KNOWN_NEW_FILES = (
++    "marketplace_features.py",
++    "docs/security-wallets.md",
++    "tests/test_marketplace.py",
++    "design-qa.md",
++    ".gitignore",
++)
++EXCLUDED_DIRS = {
++    ".git",
++    ".venv",
++    ".runtime",
++    "__pycache__",
++    "node_modules",
++    "artifacts",
++    "image-sources",
++    "rollback-test",
++}
++EXCLUDED_SUFFIXES = {
++    ".pyc",
++    ".pyo",
++    ".log",
++    ".out",
++    ".db",
++    ".sqlite",
++    ".sqlite3",
++    ".db-wal",
++    ".db-shm",
++    ".sqlite-wal",
++    ".sqlite-shm",
++    ".pem",
++    ".key",
++    ".p12",
++    ".pfx",
++    ".jks",
++    ".wallet",
++    ".exe",
++    ".dll",
++    ".so",
++    ".dylib",
++    ".bin",
++}
++EXCLUDED_NAMES = {
++    ".env",
++    ".env.local",
++    ".env.production",
++    "marketplace.db",
++    "wallet.dat",
++    "credentials.json",
++    "secrets.json",
++}
++EXCLUDED_NAME_MARKERS = ("private-key", "private_key", "credentials", "secret-key", "secret_key")
++
++
++def sha256_bytes(data: bytes) -> str:
++    return hashlib.sha256(data).hexdigest().upper()
++
++
++def is_within(path: Path, parent: Path) -> bool:
++    try:
++        path.resolve().relative_to(parent.resolve())
++        return True
++    except ValueError:
++        return False
++
++
++def is_excluded(relative: PurePosixPath) -> bool:
++    parts = tuple(part.lower() for part in relative.parts)
++    if any(part in EXCLUDED_DIRS for part in parts):
++        return True
++    name = parts[-1] if parts else ""
++    suffixes = {suffix.lower() for suffix in Path(name).suffixes}
++    if name in EXCLUDED_NAMES or suffixes.intersection(EXCLUDED_SUFFIXES):
++        return True
++    return any(marker in name for marker in EXCLUDED_NAME_MARKERS)
++
++
++def load_baseline_hashes() -> dict[str, str]:
++    if not BASELINE_SUMS.is_file():
++        raise ValueError(f"Baseline checksums missing: {BASELINE_SUMS}")
++    sums_data = BASELINE_SUMS.read_bytes()
++    if sha256_bytes(sums_data) != BASELINE_SUMS_SHA256:
++        raise ValueError("Immutable baseline checksum index changed")
++    hashes: dict[str, str] = {}
++    for line in sums_data.decode("utf-8").splitlines():
++        digest, separator, name = line.strip().partition("  ")
++        if not separator or len(digest) != 64:
++            raise ValueError("Malformed baseline SHA256SUMS.txt")
++        relative = PurePosixPath(name)
++        if relative.is_absolute() or ".." in relative.parts or name in hashes:
++            raise ValueError(f"Invalid baseline path: {name}")
++        source = BASELINE_DIR.joinpath(*relative.parts)
++        if not source.is_file() or sha256_bytes(source.read_bytes()) != digest.upper():
++            raise ValueError(f"Baseline hash mismatch: {name}")
++        hashes[name] = digest.upper()
++    if set(hashes) != BASELINE_PATHS:
++        raise ValueError("Baseline checksum list differs from expected five source files")
++    return hashes
++
++
++def add_candidate(path: Path, found: dict[str, Path], excluded: list[str]) -> None:
++    if not path.exists() or not path.is_file():
++        return
++    if path.is_symlink() or not is_within(path, REPO_ROOT):
++        excluded.append(path.as_posix())
++        return
++    relative = PurePosixPath(path.relative_to(REPO_ROOT).as_posix())
++    if is_excluded(relative):
++        excluded.append(relative.as_posix())
++        return
++    found[relative.as_posix()] = path
++
++
++def collect_files() -> tuple[dict[str, Path], list[str]]:
++    found: dict[str, Path] = {}
++    excluded: list[str] = []
++    for name in ROOT_FILES:
++        add_candidate(REPO_ROOT / name, found, excluded)
++    for directory in SOURCE_DIRS:
++        source_dir = REPO_ROOT / directory
++        if not source_dir.is_dir():
++            continue
++        for path in sorted(source_dir.rglob("*")):
++            if path.is_dir():
++                continue
++            add_candidate(path, found, excluded)
++    missing_baseline = BASELINE_PATHS.difference(found)
++    if missing_baseline:
++        raise ValueError("Release omits baseline files: " + ", ".join(sorted(missing_baseline)))
++    return dict(sorted(found.items())), excluded
++
++
++def manifest_for(files: dict[str, Path], baseline_hashes: dict[str, str], diff_data: bytes) -> dict[str, object]:
++    entries = []
++    for relative, path in files.items():
++        raw = path.read_bytes()
++        entries.append({"path": relative, "bytes": len(raw), "sha256": sha256_bytes(raw)})
++    restore_files = [
++        {
++            "path": path,
++            "source": f"baseline/{path}",
++            "sha256": baseline_hashes[path],
++        }
++        for path in sorted(BASELINE_PATHS)
++    ]
++    missing_new_files = set(KNOWN_NEW_FILES).difference(files)
++    if missing_new_files:
++        raise ValueError("known release files missing: " + ", ".join(sorted(missing_new_files)))
++    file_hashes = {entry["path"]: entry["sha256"] for entry in entries}
++    removable_files = set(KNOWN_NEW_FILES) | {
++        path for path in files if path.startswith(("static/", "tests/"))
++    }
++    return {
++        "schema_version": 2,
++        "archive": ARCHIVE_PATH.name,
++        "baseline_files": [
++            {"path": path, "sha256": baseline_hashes[path]}
++            for path in sorted(baseline_hashes)
++        ],
++        "diff": {
++            "path": DIFF_PATH.name,
++            "bytes": len(diff_data),
++            "sha256": sha256_bytes(diff_data),
++        },
++        "files": entries,
++        "rollback": {
++            "restore_files": restore_files,
++            "remove_files": [
++                {"path": path, "sha256": file_hashes[path]}
++                for path in sorted(removable_files)
++            ],
++        },
++    }
++
++
++def json_bytes(value: object) -> bytes:
++    return (json.dumps(value, indent=2, ensure_ascii=False, sort_keys=True) + "\n").encode("utf-8")
++
++
++def diff_bytes(files: dict[str, Path]) -> bytes:
++    """Create text diffs against the five-file baseline and metadata for binaries."""
++    chunks: list[str] = []
++    binary_metadata: list[str] = []
++    for relative, source in files.items():
++        if relative in UNCHANGED_TRACKED_FILES:
++            continue
++        current = source.read_bytes()
++        baseline_path = BASELINE_DIR.joinpath(*PurePosixPath(relative).parts)
++        old = baseline_path.read_bytes() if baseline_path.is_file() else None
++        try:
++            current.decode("utf-8")
++            if old is not None:
++                old.decode("utf-8")
++            is_text = b"\0" not in current and (old is None or b"\0" not in old)
++        except UnicodeDecodeError:
++            is_text = False
++
++        if is_text:
++            old_lines = old.decode("utf-8").splitlines(keepends=True) if old is not None else []
++            new_lines = current.decode("utf-8").splitlines(keepends=True)
++            if old_lines == new_lines:
++                continue
++            from_name = f"a/{relative}" if old is not None else "/dev/null"
++            to_name = f"b/{relative}"
++            chunks.extend(difflib.unified_diff(
++                old_lines,
++                new_lines,
++                fromfile=from_name,
++                tofile=to_name,
++                lineterm="\n",
++            ))
++            continue
++
++        binary_metadata.append(
++            f"diff --git a/{relative} b/{relative}\n"
++            f"new file mode 100644\n"
++            f"Binary files /dev/null and b/{relative} differ\n"
++            f"# BINARY-METADATA bytes={len(current)} sha256={sha256_bytes(current)}\n"
++        )
++
++    if binary_metadata:
++        if chunks and not chunks[-1].endswith("\n"):
++            chunks.append("\n")
++        chunks.extend(binary_metadata)
++    return "".join(chunks).encode("utf-8")
++
++
++def write_atomic(path: Path, data: bytes) -> None:
++    path.parent.mkdir(parents=True, exist_ok=True)
++    descriptor, temporary_name = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
++    temporary = Path(temporary_name)
++    try:
++        with os.fdopen(descriptor, "wb") as stream:
++            stream.write(data)
++            stream.flush()
++            os.fsync(stream.fileno())
++        temporary.replace(path)
++    finally:
++        temporary.unlink(missing_ok=True)
++
++
++def build(dry_run: bool = False) -> int:
++    baseline_hashes = load_baseline_hashes()
++    files, excluded = collect_files()
++    diff_data = diff_bytes(files)
++    manifest = manifest_for(files, baseline_hashes, diff_data)
++    manifest_data = json_bytes(manifest)
++    if dry_run:
++        print(f"DRY_RUN files={len(files)} excluded={len(excluded)} baseline_files={len(baseline_hashes)}")
++        print("DRY_RUN baseline_sha256=" + sha256_bytes(BASELINE_SUMS.read_bytes()))
++        return 0
++
++    descriptor, temporary_name = tempfile.mkstemp(prefix=".MODIFIED_FILE.", suffix=".tmp", dir=SCRIPT_DIR)
++    os.close(descriptor)
++    temporary = Path(temporary_name)
++    try:
++        with zipfile.ZipFile(temporary, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as archive:
++            for relative, source in files.items():
++                info = zipfile.ZipInfo(relative, date_time=(2020, 1, 1, 0, 0, 0))
++                info.compress_type = zipfile.ZIP_DEFLATED
++                info.external_attr = 0o100644 << 16
++                archive.writestr(info, source.read_bytes())
++            info = zipfile.ZipInfo(MANIFEST_PATH.name, date_time=(2020, 1, 1, 0, 0, 0))
++            info.compress_type = zipfile.ZIP_DEFLATED
++            info.external_attr = 0o100644 << 16
++            archive.writestr(info, manifest_data)
++        archive_data_hash = sha256_bytes(temporary.read_bytes())
++        pin_data = f"{sha256_bytes(manifest_data)}  {MANIFEST_PATH.name}\n".encode("ascii")
++        for output, expected in ((MANIFEST_PATH, manifest_data), (ARCHIVE_PATH, None), (MANIFEST_PIN_PATH, pin_data), (DIFF_PATH, diff_data)):
++            if output.exists():
++                if not output.is_file() or output.is_symlink():
++                    raise ValueError(f"release output is not a regular file: {output}")
++                current = output.read_bytes()
++                matches = current == expected if expected is not None else sha256_bytes(current) == archive_data_hash
++                if not matches:
++                    raise ValueError(f"release output conflict; existing file left unchanged: {output}")
++        if not MANIFEST_PATH.exists():
++            write_atomic(MANIFEST_PATH, manifest_data)
++        if not ARCHIVE_PATH.exists():
++            temporary.replace(ARCHIVE_PATH)
++        if not MANIFEST_PIN_PATH.exists():
++            write_atomic(MANIFEST_PIN_PATH, pin_data)
++        if not DIFF_PATH.exists():
++            write_atomic(DIFF_PATH, diff_data)
++    finally:
++        temporary.unlink(missing_ok=True)
++    print(f"BUILD_OK archive={ARCHIVE_PATH} files={len(files)} excluded={len(excluded)} manifest={MANIFEST_PATH} diff={DIFF_PATH} manifest_sha256={sha256_bytes(manifest_data)}")
++    return 0
++
++
++def main() -> int:
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument("--dry-run", action="store_true", help="validate file inventory without writing release artifacts")
++    args = parser.parse_args()
++    try:
++        return build(dry_run=args.dry_run)
++    except (OSError, ValueError, zipfile.BadZipFile) as error:
++        print(f"BUILD_ERROR {error}")
++        return 1
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+diff --git a/artifacts/redesign/verify_release.py b/artifacts/redesign/verify_release.py
+new file mode 100644
+--- /dev/null
++++ b/artifacts/redesign/verify_release.py
+@@ -0,0 +1,374 @@
++#!/usr/bin/env python3
++"""Verify release archive integrity or run isolated HTTP/JavaScript smoke checks."""
++
++from __future__ import annotations
++
++import argparse
++import hashlib
++import importlib.util
++import json
++import os
++import shutil
++import subprocess
++import sys
++import tempfile
++import zipfile
++from pathlib import Path, PurePosixPath
++
++import build_release
++
++
++SCRIPT_DIR = Path(__file__).resolve().parent
++REPO_ROOT = SCRIPT_DIR.parents[1]
++BASELINE_DIR = SCRIPT_DIR / "baseline"
++MANIFEST_PATH = SCRIPT_DIR / "release-manifest.json"
++MANIFEST_PIN_PATH = SCRIPT_DIR / "release-manifest.sha256"
++ARCHIVE_PATH = SCRIPT_DIR / "MODIFIED_FILE.zip"
++ROLLBACK_STATE_PATH = SCRIPT_DIR / "rollback-test-state.json"
++ROLLBACK_TARGET = SCRIPT_DIR / "rollback-test"
++FORBIDDEN_DIRS = {".git", ".venv", ".runtime", "__pycache__", "node_modules", "artifacts", "image-sources"}
++FORBIDDEN_SUFFIXES = {
++    ".pyc", ".pyo", ".log", ".out", ".db", ".sqlite", ".sqlite3", ".db-wal", ".db-shm", ".sqlite-wal", ".sqlite-shm",
++    ".pem", ".key", ".p12", ".pfx", ".jks", ".wallet", ".exe", ".dll", ".so", ".dylib", ".bin",
++}
++FORBIDDEN_NAMES = {".env", ".env.local", ".env.production", "marketplace.db", "wallet.dat", "credentials.json", "secrets.json"}
++
++
++def sha256(data: bytes) -> str:
++    return hashlib.sha256(data).hexdigest().upper()
++
++
++def validate_archive_path(name: str) -> None:
++    path = PurePosixPath(name)
++    if not name or path.is_absolute() or ".." in path.parts or "\\" in name:
++        raise ValueError(f"unsafe archive path: {name!r}")
++    parts = tuple(part.lower() for part in path.parts)
++    filename = parts[-1]
++    suffixes = {suffix.lower() for suffix in Path(filename).suffixes}
++    if any(part in FORBIDDEN_DIRS for part in parts):
++        raise ValueError(f"excluded directory in archive: {name}")
++    if filename in FORBIDDEN_NAMES or suffixes.intersection(FORBIDDEN_SUFFIXES):
++        raise ValueError(f"excluded file in archive: {name}")
++
++
++def verify_archive() -> int:
++    if not MANIFEST_PATH.is_file() or not ARCHIVE_PATH.is_file() or not MANIFEST_PIN_PATH.is_file():
++        raise ValueError("release manifest, manifest pin, or archive missing; run build_release.py first")
++    manifest_bytes = MANIFEST_PATH.read_bytes()
++    manifest = json.loads(manifest_bytes.decode("utf-8"))
++    if manifest.get("schema_version") != 2 or manifest.get("archive") != ARCHIVE_PATH.name:
++        raise ValueError("release manifest schema or archive name mismatch")
++    expected_pin = f"{sha256(manifest_bytes)}  {MANIFEST_PATH.name}\n"
++    if MANIFEST_PIN_PATH.read_text(encoding="ascii") != expected_pin:
++        raise ValueError("release manifest SHA-256 pin mismatch")
++    entries = manifest.get("files")
++    if not isinstance(entries, list):
++        raise ValueError("manifest files must be a list")
++    expected: dict[str, tuple[str, int]] = {}
++    for entry in entries:
++        if not isinstance(entry, dict) or not isinstance(entry.get("path"), str):
++            raise ValueError("malformed release manifest entry")
++        name = entry["path"]
++        validate_archive_path(name)
++        if name == MANIFEST_PATH.name or name in expected:
++            raise ValueError(f"duplicate or reserved manifest path: {name}")
++        digest, size = entry.get("sha256"), entry.get("bytes")
++        if not isinstance(digest, str) or len(digest) != 64 or not isinstance(size, int) or size < 0:
++            raise ValueError(f"malformed hash/size for: {name}")
++        expected[name] = (digest.upper(), size)
++
++    baseline_hashes = build_release.load_baseline_hashes()
++    baseline_entries = manifest.get("baseline_files")
++    if not isinstance(baseline_entries, list):
++        raise ValueError("manifest baseline_files must be a list")
++    actual_baseline = {entry.get("path"): str(entry.get("sha256", "")).upper() for entry in baseline_entries if isinstance(entry, dict)}
++    if actual_baseline != baseline_hashes:
++        raise ValueError("release manifest baseline hashes differ from immutable snapshot")
++
++    current_files, _ = build_release.collect_files()
++    diff_data = build_release.diff_bytes(current_files)
++    rebuilt = build_release.manifest_for(current_files, baseline_hashes, diff_data)
++    if build_release.json_bytes(rebuilt) != manifest_bytes:
++        raise ValueError("release manifest does not match frozen source and rollback snapshots")
++    if not build_release.DIFF_PATH.is_file() or build_release.DIFF_PATH.read_bytes() != diff_data:
++        raise ValueError("DIFF_FILE.patch differs from frozen source tree")
++
++    with zipfile.ZipFile(ARCHIVE_PATH, "r") as archive:
++        bad_member = archive.testzip()
++        if bad_member:
++            raise ValueError(f"corrupt archive member: {bad_member}")
++        names = archive.namelist()
++        if len(names) != len(set(names)):
++            raise ValueError("duplicate entries in archive")
++        for name in names:
++            validate_archive_path(name)
++        if set(names) != set(expected) | {MANIFEST_PATH.name}:
++            missing = sorted((set(expected) | {MANIFEST_PATH.name}) - set(names))
++            extra = sorted(set(names) - (set(expected) | {MANIFEST_PATH.name}))
++            raise ValueError(f"archive entry mismatch missing={missing} extra={extra}")
++        if archive.read(MANIFEST_PATH.name) != manifest_bytes:
++            raise ValueError("embedded manifest differs from on-disk manifest")
++        for name, (digest, size) in expected.items():
++            data = archive.read(name)
++            if len(data) != size or sha256(data) != digest:
++                raise ValueError(f"archive payload mismatch: {name}")
++    print(f"ARCHIVE_OK entries={len(expected)} sha256={sha256(ARCHIVE_PATH.read_bytes())}")
++    return 0
++
++
++def _import_app(app_path: Path, import_root: Path):
++    if not app_path.is_file():
++        raise FileNotFoundError(app_path)
++    sys.path.insert(0, str(import_root))
++    name = "bitloja_release_smoke_app"
++    sys.modules.pop(name, None)
++    spec = importlib.util.spec_from_file_location(name, app_path)
++    if spec is None or spec.loader is None:
++        raise ImportError(f"could not load app module: {app_path}")
++    module = importlib.util.module_from_spec(spec)
++    sys.modules[name] = module
++    spec.loader.exec_module(module)
++    return module
++
++
++def smoke_http(target: str, source_root: Path | None = None) -> dict[str, int]:
++    if source_root is None:
++        source_root = BASELINE_DIR if target == "baseline" else REPO_ROOT
++    app_path = source_root / "app.py"
++    if target not in {"baseline", "modified", "rollback-test"}:
++        raise ValueError("smoke target must be baseline, modified, or rollback-test")
++    with tempfile.TemporaryDirectory(prefix=f"bitloja-{target}-smoke-") as temp_dir:
++        database = Path(temp_dir) / "isolated-marketplace.db"
++        os.environ.update({
++            "DATABASE_PATH": str(database),
++            "BTC_MODE": "demo",
++            "LN_MODE": "off",
++            "CUSTODY_MODE": "demo",
++            "ENABLE_DEMO_SEED": "0",
++            "ENABLE_LIGHTNING_POLLER": "0",
++            "APP_SECRET": "release-smoke-only-not-for-deployment",
++        })
++        module = _import_app(app_path, source_root)
++        module.init_db()
++        client = module.app.test_client()
++        statuses = {}
++        for endpoint in ("/", "/api/bootstrap", "/api/products"):
++            response = client.get(endpoint)
++            if response.status_code != 200:
++                raise ValueError(f"GET {endpoint} returned {response.status_code}")
++            if endpoint != "/" and not response.is_json:
++                raise ValueError(f"GET {endpoint} did not return JSON")
++            payload = response.get_json(silent=True) if endpoint != "/" else None
++            if endpoint == "/api/bootstrap" and not isinstance(payload, dict):
++                raise ValueError("/api/bootstrap payload is not an object")
++            if endpoint == "/api/products" and (
++                not isinstance(payload, dict)
++                or not isinstance(payload.get("categories"), list)
++                or not isinstance(payload.get("products"), list)
++            ):
++                raise ValueError("/api/products payload must contain category and product lists")
++            statuses[endpoint] = response.status_code
++        return statuses
++
++
++def node_executable() -> str:
++    candidates = []
++    configured = os.environ.get("NODE")
++    if configured:
++        candidates.append(Path(configured))
++    candidates.append(Path.home() / ".cache" / "codex-runtimes" / "codex-primary-runtime" / "dependencies" / "node" / "bin" / "node.exe")
++    located = shutil.which("node")
++    if located:
++        candidates.append(Path(located))
++    for candidate in candidates:
++        if candidate.is_file():
++            return str(candidate)
++    raise ValueError("Node executable missing; set NODE or install node on PATH")
++
++
++def smoke_javascript(source_root: Path = REPO_ROOT) -> int:
++    scripts = sorted((source_root / "static" / "js").rglob("*.js"))
++    if not scripts:
++        raise ValueError("no static JavaScript files found")
++    node = node_executable()
++    for script in scripts:
++        completed = subprocess.run([node, "--check", str(script)], capture_output=True, text=True)
++        if completed.returncode != 0:
++            detail = (completed.stderr or completed.stdout).strip()
++            raise ValueError(f"node --check failed for {script.relative_to(source_root)}: {detail}")
++    return len(scripts)
++
++
++def checked_rollback_target() -> Path:
++    if ROLLBACK_TARGET.is_symlink():
++        raise ValueError("rollback-test path cannot be a symlink")
++    try:
++        ROLLBACK_TARGET.resolve().relative_to(SCRIPT_DIR.resolve())
++    except ValueError as error:
++        raise ValueError("rollback-test path escaped artifact directory") from error
++    return ROLLBACK_TARGET
++
++
++def safe_target_path(root: Path, name: str) -> Path:
++    relative = PurePosixPath(name)
++    validate_archive_path(name)
++    destination = root.joinpath(*relative.parts)
++    cursor = root
++    for part in relative.parts:
++        cursor = cursor / part
++        if cursor.is_symlink():
++            raise ValueError(f"rollback target contains symlink: {name}")
++    try:
++        destination.resolve(strict=False).relative_to(root.resolve())
++    except ValueError as error:
++        raise ValueError(f"rollback target path escaped: {name}") from error
++    return destination
++
++
++def protected_source_snapshot() -> list[dict[str, object]]:
++    snapshot = []
++    for name in (".env", "marketplace.db", "marketplace.db-wal", "marketplace.db-shm"):
++        path = REPO_ROOT / name
++        if path.is_symlink():
++            raise ValueError(f"protected source path cannot be a symlink: {name}")
++        if path.is_file():
++            data = path.read_bytes()
++            snapshot.append({"path": name, "exists": True, "bytes": len(data), "sha256": sha256(data)})
++        else:
++            snapshot.append({"path": name, "exists": False, "bytes": None, "sha256": None})
++    return snapshot
++
++
++def expected_state(manifest: dict[str, object]) -> dict[str, object]:
++    files = manifest["files"]
++    return {
++        "schema_version": 1,
++        "archive_sha256": sha256(ARCHIVE_PATH.read_bytes()),
++        "manifest_sha256": sha256(MANIFEST_PATH.read_bytes()),
++        "files": [{"path": entry["path"], "sha256": entry["sha256"]} for entry in files],
++        "protected_source": protected_source_snapshot(),
++    }
++
++
++def prepare_rollback_test() -> int:
++    verify_archive()
++    manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
++    target = checked_rollback_target()
++    if target.exists() and (not target.is_dir() or any(target.iterdir())):
++        raise ValueError(f"rollback-test target must be absent or empty: {target}")
++    state = expected_state(manifest)
++    state_data = build_release.json_bytes(state)
++    if ROLLBACK_STATE_PATH.exists():
++        if not ROLLBACK_STATE_PATH.is_file() or ROLLBACK_STATE_PATH.read_bytes() != state_data:
++            raise ValueError("rollback test state conflict; existing file left unchanged")
++    target.mkdir(parents=True, exist_ok=True)
++    with zipfile.ZipFile(ARCHIVE_PATH, "r") as archive:
++        for entry in manifest["files"]:
++            name = entry["path"]
++            data = archive.read(name)
++            if sha256(data) != entry["sha256"] or len(data) != entry["bytes"]:
++                raise ValueError(f"verified archive payload changed during staging: {name}")
++            destination = safe_target_path(target, name)
++            destination.parent.mkdir(parents=True, exist_ok=True)
++            safe_target_path(target, name)
++            destination.write_bytes(data)
++    if not ROLLBACK_STATE_PATH.exists():
++        build_release.write_atomic(ROLLBACK_STATE_PATH, state_data)
++    print(f"ROLLBACK_TEST_PREPARED target={target} files={len(manifest['files'])} protected_source_paths={len(state['protected_source'])}")
++    return 0
++
++
++def verify_restored() -> int:
++    verify_archive()
++    if not ROLLBACK_STATE_PATH.is_file():
++        raise ValueError("rollback test state missing; run --rollback-test first")
++    manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
++    state = json.loads(ROLLBACK_STATE_PATH.read_text(encoding="utf-8"))
++    if state != expected_state(manifest):
++        raise ValueError("source files, archive, manifest, or protected source hashes changed after rollback staging")
++
++    rollback = manifest.get("rollback")
++    if not isinstance(rollback, dict):
++        raise ValueError("rollback manifest section missing")
++    restore_entries = rollback.get("restore_files")
++    remove_entries = rollback.get("remove_files")
++    if not isinstance(restore_entries, list) or not isinstance(remove_entries, list):
++        raise ValueError("rollback restore/remove inventories malformed")
++    file_hashes = {entry["path"]: entry["sha256"] for entry in manifest["files"]}
++    restore_hashes = {entry["path"]: entry["sha256"] for entry in restore_entries}
++    remove_hashes = {entry["path"]: entry["sha256"] for entry in remove_entries}
++    if set(restore_hashes).intersection(remove_hashes):
++        raise ValueError("rollback inventories overlap")
++    target = checked_rollback_target()
++    for name in remove_hashes:
++        if file_hashes.get(name) != remove_hashes[name]:
++            raise ValueError(f"removal hash differs from package payload: {name}")
++        destination = safe_target_path(target, name)
++        if destination.exists():
++            raise ValueError(f"known release file remains after rollback: {name}")
++    kept_paths = set(file_hashes).difference(remove_hashes)
++    actual_paths = set()
++    if target.exists():
++        for path in target.rglob("*"):
++            if path.is_symlink():
++                raise ValueError(f"rollback-test contains symlink: {path.relative_to(target)}")
++            if path.is_file():
++                actual_paths.add(path.relative_to(target).as_posix())
++    if actual_paths != kept_paths:
++        raise ValueError("rollback-test file inventory differs from expected restored inventory")
++    for name in sorted(kept_paths):
++        destination = safe_target_path(target, name)
++        expected = restore_hashes.get(name, file_hashes[name])
++        if not destination.is_file() or sha256(destination.read_bytes()) != expected:
++            raise ValueError(f"restored file hash mismatch: {name}")
++
++    protected_current = protected_source_snapshot()
++    if protected_current != state["protected_source"]:
++        raise ValueError("source database/environment hashes changed during rollback test")
++    for removed_tree in ("static", "tests"):
++        if (target / removed_tree).exists():
++            raise ValueError(f"release {removed_tree} tree remains after rollback")
++    statuses = smoke_http("rollback-test", target)
++    print(f"RESTORED_OK target={target} GET/={statuses['/']} GET/api/bootstrap={statuses['/api/bootstrap']} GET/api/products={statuses['/api/products']} files={len(kept_paths)} removed_release_files={len(remove_hashes)} static_removed=true source_unchanged=true protected_unchanged=true")
++    return 0
++
++
++def main() -> int:
++    parser = argparse.ArgumentParser(description=__doc__)
++    group = parser.add_mutually_exclusive_group(required=True)
++    group.add_argument("--archive", action="store_true", help="verify ZIP entries, manifest, and payload hashes")
++    group.add_argument("--smoke", choices=("baseline", "modified"), help="run HTTP smoke checks against an isolated SQLite database")
++    group.add_argument("--rollback-test", action="store_true", help="stage a hash-verified release copy at the fixed rollback-test path")
++    group.add_argument("--restored", action="store_true", help="verify restored rollback copy, isolated HTTP behavior, JS parse, and source hashes")
++    parser.add_argument("--js", action="store_true", help="also run node --check in modified smoke mode")
++    args = parser.parse_args()
++    try:
++        if args.archive:
++            if args.js:
++                parser.error("--js applies only with --smoke modified")
++            return verify_archive()
++        if args.rollback_test:
++            if args.js:
++                parser.error("--js does not apply with --rollback-test")
++            return prepare_rollback_test()
++        if args.restored:
++            if args.js:
++                parser.error("--js does not apply with --restored")
++            return verify_restored()
++        statuses = smoke_http(args.smoke)
++        js_files = None
++        if args.js:
++            if args.smoke != "modified":
++                parser.error("--js applies only with --smoke modified")
++            js_files = smoke_javascript()
++        label = "BASELINE" if args.smoke == "baseline" else "MODIFIED"
++        js_result = f" JS_PARSE_FILES={js_files}" if js_files is not None else ""
++        print(f"{label}_OK GET/={statuses['/']} GET/api/bootstrap={statuses['/api/bootstrap']} GET/api/products={statuses['/api/products']}{js_result} isolated_database=true")
++        return 0
++    except (OSError, ValueError, ImportError, zipfile.BadZipFile, json.JSONDecodeError) as error:
++        print(f"VERIFY_ERROR {error}")
++        return 1
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+diff --git a/artifacts/redesign/restore_release.py b/artifacts/redesign/restore_release.py
+new file mode 100644
+--- /dev/null
++++ b/artifacts/redesign/restore_release.py
+@@ -0,0 +1,189 @@
++#!/usr/bin/env python3
++"""Restore approved release files in the fixed, disposable rollback-test copy."""
++
++from __future__ import annotations
++
++import argparse
++import hashlib
++import json
++import os
++import tempfile
++from pathlib import Path, PurePosixPath
++
++import build_release
++import verify_release
++
++
++SCRIPT_DIR = Path(__file__).resolve().parent
++BASELINE_DIR = SCRIPT_DIR / "baseline"
++MANIFEST_PATH = SCRIPT_DIR / "release-manifest.json"
++BASELINE_PATHS = build_release.BASELINE_PATHS
++
++
++def digest(data: bytes) -> str:
++    return hashlib.sha256(data).hexdigest().upper()
++
++
++def artifact_source_path(name: str) -> Path:
++    relative = PurePosixPath(name)
++    if relative.is_absolute() or ".." in relative.parts or "\\" in name:
++        raise ValueError(f"unsafe rollback source path: {name!r}")
++    if not relative.parts or relative.parts[0] != "baseline":
++        raise ValueError(f"rollback source is not an approved snapshot: {name}")
++    source = SCRIPT_DIR.joinpath(*relative.parts)
++    if source.is_symlink():
++        raise ValueError(f"rollback snapshot cannot be a symlink: {name}")
++    try:
++        source.resolve().relative_to(SCRIPT_DIR.resolve())
++    except ValueError as error:
++        raise ValueError(f"rollback snapshot escaped artifact directory: {name}") from error
++    return source
++
++
++def load_plan() -> tuple[dict[str, str], dict[str, tuple[bytes, str]], dict[str, str]]:
++    verify_release.verify_archive()
++    manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
++    baseline_hashes = build_release.load_baseline_hashes()
++    release_hashes = {entry["path"]: entry["sha256"].upper() for entry in manifest["files"]}
++    rollback = manifest.get("rollback")
++    if not isinstance(rollback, dict):
++        raise ValueError("trusted release manifest has no rollback plan")
++    restore_entries = rollback.get("restore_files")
++    remove_entries = rollback.get("remove_files")
++    if not isinstance(restore_entries, list) or not isinstance(remove_entries, list):
++        raise ValueError("malformed rollback inventories")
++
++    restores: dict[str, tuple[bytes, str]] = {}
++    for entry in restore_entries:
++        if not isinstance(entry, dict):
++            raise ValueError("malformed restore entry")
++        name, source_name = entry.get("path"), entry.get("source")
++        expected = entry.get("sha256")
++        if not isinstance(name, str) or not isinstance(source_name, str) or not isinstance(expected, str) or len(expected) != 64:
++            raise ValueError("malformed restore path/hash")
++        verify_release.validate_archive_path(name)
++        source = artifact_source_path(source_name)
++        data = source.read_bytes()
++        if digest(data) != expected.upper():
++            raise ValueError(f"trusted rollback snapshot hash mismatch: {source_name}")
++        restores[name] = (data, expected.upper())
++
++    if set(restores) != set(BASELINE_PATHS):
++        raise ValueError("trusted rollback restore inventory differs from approved paths")
++    for name in BASELINE_PATHS:
++        if restores[name][1] != baseline_hashes[name]:
++            raise ValueError(f"manifest baseline restore hash mismatch: {name}")
++    removals: dict[str, str] = {}
++    for entry in remove_entries:
++        if not isinstance(entry, dict):
++            raise ValueError("malformed removal entry")
++        name, expected = entry.get("path"), entry.get("sha256")
++        if not isinstance(name, str) or not isinstance(expected, str) or len(expected) != 64:
++            raise ValueError("malformed removal path/hash")
++        verify_release.validate_archive_path(name)
++        removals[name] = expected.upper()
++    expected_removals = set(build_release.KNOWN_NEW_FILES) | {
++        name for name in release_hashes if name.startswith(("static/", "tests/"))
++    }
++    if set(removals) != expected_removals:
++        raise ValueError("trusted rollback removal inventory differs from explicit known-new-file list")
++    if set(restores).intersection(removals):
++        raise ValueError("restore and removal inventories overlap")
++    for name, expected in removals.items():
++        if release_hashes.get(name) != expected:
++            raise ValueError(f"removal hash differs from release payload: {name}")
++    for name in set(restores) | set(removals):
++        if name not in release_hashes:
++            raise ValueError(f"rollback path missing from release payload: {name}")
++    return release_hashes, restores, removals
++
++
++def target_path(target: Path, name: str) -> Path:
++    destination = verify_release.safe_target_path(target, name)
++    return destination
++
++
++def preflight(target: Path, release_hashes: dict[str, str], restores: dict[str, tuple[bytes, str]], removals: dict[str, str]) -> None:
++    if not target.is_dir() or target.is_symlink():
++        raise ValueError(f"rollback-test directory missing or invalid: {target}")
++    actual_files = set()
++    for path in target.rglob("*"):
++        if path.is_symlink():
++            raise ValueError(f"rollback-test contains symlink: {path.relative_to(target)}")
++        if path.is_file():
++            actual_files.add(path.relative_to(target).as_posix())
++    if actual_files != set(release_hashes):
++        missing = sorted(set(release_hashes) - actual_files)
++        extra = sorted(actual_files - set(release_hashes))
++        raise ValueError(f"rollback-test inventory mismatch missing={missing} extra={extra}")
++
++    for name, release_hash in release_hashes.items():
++        destination = target_path(target, name)
++        if not destination.is_file():
++            raise ValueError(f"rollback-test release file missing: {name}")
++        current = digest(destination.read_bytes())
++        allowed = {release_hash}
++        if name in restores:
++            allowed.add(restores[name][1])
++        if current not in allowed:
++            raise ValueError(f"rollback hash guard stopped on unknown content: {name}")
++    for name, expected in removals.items():
++        if release_hashes[name] != expected:
++            raise ValueError(f"known-new-file hash guard failed: {name}")
++
++
++def write_baseline(name: str, data: bytes, target: Path) -> None:
++    destination = target_path(target, name)
++    destination.parent.mkdir(parents=True, exist_ok=True)
++    destination = target_path(target, name)
++    descriptor, temporary_name = tempfile.mkstemp(prefix=f".{destination.name}.", suffix=".restore", dir=destination.parent)
++    temporary = Path(temporary_name)
++    try:
++        with os.fdopen(descriptor, "wb") as stream:
++            stream.write(data)
++            stream.flush()
++            os.fsync(stream.fileno())
++        temporary.replace(destination)
++    finally:
++        temporary.unlink(missing_ok=True)
++
++
++def restore(dry_run: bool = False) -> int:
++    release_hashes, restores, removals = load_plan()
++    target = verify_release.checked_rollback_target()
++    preflight(target, release_hashes, restores, removals)
++    if dry_run:
++        print(f"ROLLBACK_DRY_RUN target={target} baseline_files={len(BASELINE_PATHS)} release_files_to_remove={len(removals)}")
++        return 0
++
++    for name in sorted(removals, key=lambda value: (value.count("/"), value), reverse=True):
++        destination = target_path(target, name)
++        if digest(destination.read_bytes()) != removals[name]:
++            raise ValueError(f"release file changed after preflight: {name}")
++        destination.unlink()
++        parent = destination.parent
++        while parent != target:
++            try:
++                parent.rmdir()
++            except OSError:
++                break
++            parent = parent.parent
++    for name, (data, _) in sorted(restores.items()):
++        write_baseline(name, data, target)
++    print(f"RESTORE_OK target={target} baseline_files={len(BASELINE_PATHS)} removed_release_files={len(removals)}")
++    return 0
++
++
++def main() -> int:
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument("--dry-run", action="store_true", help="validate rollback target without changing files")
++    args = parser.parse_args()
++    try:
++        return restore(dry_run=args.dry_run)
++    except (OSError, ValueError, json.JSONDecodeError, KeyError) as error:
++        print(f"RESTORE_ERROR {error}")
++        return 1
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+diff --git a/artifacts/redesign/ROLLBACK.sh b/artifacts/redesign/ROLLBACK.sh
+new file mode 100644
+--- /dev/null
++++ b/artifacts/redesign/ROLLBACK.sh
+@@ -0,0 +1,15 @@
++#!/usr/bin/env bash
++set -euo pipefail
++
++script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
++
++if [[ -z "${PYTHON:-}" ]]; then
++  printf '%s\n' 'ROLLBACK_ERROR set PYTHON to bundled Python executable' >&2
++  exit 2
++fi
++if [[ ! -f "$PYTHON" ]]; then
++  printf 'ROLLBACK_ERROR Python executable not found: %s\n' "$PYTHON" >&2
++  exit 2
++fi
++
++exec "$PYTHON" "$script_dir/restore_release.py"

@@ -1,0 +1,74 @@
+{
+  "assets": [
+    {
+      "file": "static/assets/bitcoin-bag.webp",
+      "source": "artifacts/redesign/image-sources/.bitcoin-bag-source.png",
+      "width": 833,
+      "height": 1000,
+      "bytes": 319524,
+      "alpha": true,
+      "alpha_range": [
+        0,
+        255
+      ],
+      "format": "WEBP",
+      "within_target": true
+    },
+    {
+      "file": "static/assets/seller-parcel.webp",
+      "source": "artifacts/redesign/image-sources/.seller-parcel-source.png",
+      "width": 946,
+      "height": 800,
+      "bytes": 206762,
+      "alpha": true,
+      "alpha_range": [
+        0,
+        255
+      ],
+      "format": "WEBP",
+      "within_target": true
+    },
+    {
+      "file": "static/assets/bitcoin-cart.webp",
+      "source": "artifacts/redesign/image-sources/.bitcoin-cart-source.png",
+      "width": 945,
+      "height": 800,
+      "bytes": 236770,
+      "alpha": true,
+      "alpha_range": [
+        0,
+        255
+      ],
+      "format": "WEBP",
+      "within_target": true
+    },
+    {
+      "file": "static/assets/bitcoin-crystal.webp",
+      "source": "artifacts/redesign/image-sources/.bitcoin-crystal-source.png",
+      "width": 875,
+      "height": 800,
+      "bytes": 225242,
+      "alpha": true,
+      "alpha_range": [
+        0,
+        255
+      ],
+      "format": "WEBP",
+      "within_target": true
+    },
+    {
+      "file": "static/assets/blue-brush.webp",
+      "source": "artifacts/redesign/image-sources/.blue-brush-source.png",
+      "width": 1200,
+      "height": 800,
+      "bytes": 237386,
+      "alpha": true,
+      "alpha_range": [
+        0,
+        255
+      ],
+      "format": "WEBP",
+      "within_target": true
+    }
+  ]
+}

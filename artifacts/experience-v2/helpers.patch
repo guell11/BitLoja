@@ -1,0 +1,843 @@
+--- a/artifacts/redesign/build_release.py
++++ b/artifacts/experience-v2/build_release.py
+@@ -1,5 +1,5 @@
+ #!/usr/bin/env python3
+-"""Build reproducible BitLoja release archive and its SHA-256 manifest."""
++"""Build experience-v2 release against the frozen 46-file current baseline."""
+ 
+ from __future__ import annotations
+ 
+@@ -8,6 +8,7 @@
+ import hashlib
+ import json
+ import os
++import stat
+ import tempfile
+ import zipfile
+ from pathlib import Path, PurePosixPath
+@@ -17,7 +18,9 @@
+ REPO_ROOT = SCRIPT_DIR.parents[1]
+ BASELINE_DIR = SCRIPT_DIR / "baseline"
+ BASELINE_SUMS = BASELINE_DIR / "SHA256SUMS.txt"
+-BASELINE_SUMS_SHA256 = "CAE4B21E4FC7A20856ECCE651123B11ABB616A8F99012400D7834D547D2E1951"
++BASELINE_SUMS_SHA256 = "CF4FCB515626282FC0D3E1A0CB84AA8DD0E61DDB6FD83E1567FDDAFC109D44E2"
++BASELINE_MANIFEST = BASELINE_DIR / "checkpoint-manifest.json"
++BASELINE_MANIFEST_SHA256 = "F8EE4F277F47EF7AFBD5FFBC79D810E32916AAC0427B0A83F9EE60C45C799FA0"
+ MANIFEST_PATH = SCRIPT_DIR / "release-manifest.json"
+ MANIFEST_PIN_PATH = SCRIPT_DIR / "release-manifest.sha256"
+ ARCHIVE_PATH = SCRIPT_DIR / "MODIFIED_FILE.zip"
+@@ -39,29 +42,53 @@
+ )
+ SOURCE_DIRS = ("templates", "static", "docs", "tests")
+ BASELINE_PATHS = {
++    ".gitignore",
++    "LICENSE",
++    "README.md",
+     "app.py",
+-    "templates/index.html",
+-    "env.example",
+-    "README.md",
+-    "requirements.txt",
+-}
+-UNCHANGED_TRACKED_FILES = {
+-    "LICENSE",
+     "bitcoin.conf.example",
+-    "lnd.conf.example",
+-    "run.bat",
+-    "run.sh",
++    "design-qa.md",
+     "docs/screenshots/admin.png",
+     "docs/screenshots/home.png",
+     "docs/screenshots/product.png",
++    "docs/security-wallets.md",
++    "env.example",
++    "lnd.conf.example",
++    "marketplace_features.py",
++    "requirements.txt",
++    "run.bat",
++    "run.sh",
++    "static/assets/bitcoin-bag.webp",
++    "static/assets/bitcoin-cart.webp",
++    "static/assets/bitcoin-crystal.webp",
++    "static/assets/blue-brush.webp",
++    "static/assets/products/backpack.webp",
++    "static/assets/products/bottle.webp",
++    "static/assets/products/headset.webp",
++    "static/assets/products/keyboard.webp",
++    "static/assets/products/lamp.webp",
++    "static/assets/products/organizer.webp",
++    "static/assets/products/ssd.webp",
++    "static/assets/products/watch.webp",
++    "static/assets/seller-parcel.webp",
++    "static/css/auth.css",
++    "static/css/bitloja.css",
++    "static/css/cart.css",
++    "static/css/dashboard.css",
++    "static/css/glass.css",
++    "static/fonts/ARCHIVO-OFL.txt",
++    "static/fonts/CAVEAT-OFL.txt",
++    "static/fonts/JETBRAINS-MONO-OFL.txt",
++    "static/fonts/archivo-variable-latin.woff2",
++    "static/fonts/bootstrap-icons.woff2",
++    "static/fonts/caveat-variable-latin.woff2",
++    "static/fonts/jetbrains-mono-variable-latin.woff2",
++    "static/icons/LICENSE",
++    "static/icons/bootstrap-icons.css",
++    "static/js/bitloja.js",
++    "templates/index.html",
++    "tests/test_marketplace.py",
+ }
+-KNOWN_NEW_FILES = (
+-    "marketplace_features.py",
+-    "docs/security-wallets.md",
+-    "tests/test_marketplace.py",
+-    "design-qa.md",
+-    ".gitignore",
+-)
+ EXCLUDED_DIRS = {
+     ".git",
+     ".venv",
+@@ -120,6 +147,53 @@
+         return False
+ 
+ 
++def is_redirected_path(path: Path) -> bool:
++    try:
++        metadata = path.lstat()
++    except FileNotFoundError:
++        return False
++    return stat.S_ISLNK(metadata.st_mode) or bool(
++        getattr(metadata, "st_file_attributes", 0)
++        & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400)
++    )
++
++
++def require_real_path(path: Path, root: Path) -> None:
++    """Reject redirected paths, including Windows junctions and root ancestors."""
++    path, root = path.absolute(), root.absolute()
++    relative = path.relative_to(root)
++    for ancestor in (*reversed(root.parents), root):
++        if is_redirected_path(ancestor):
++            raise ValueError(f"redirected source ancestor: {ancestor}")
++    cursor = root
++    for part in relative.parts:
++        cursor = cursor / part
++        if is_redirected_path(cursor):
++            raise ValueError(f"redirected source path: {cursor}")
++    if not is_within(path, root):
++        raise ValueError(f"source path escaped root: {path}")
++
++
++def real_file_inventory(root: Path) -> set[str]:
++    require_real_path(root, root)
++    if not root.is_dir():
++        raise ValueError(f"source directory missing: {root}")
++    found: set[str] = set()
++    pending = [root]
++    while pending:
++        directory = pending.pop()
++        require_real_path(directory, root)
++        for path in directory.iterdir():
++            require_real_path(path, root)
++            if path.is_dir():
++                pending.append(path)
++            elif path.is_file():
++                found.add(path.relative_to(root).as_posix())
++            else:
++                raise ValueError(f"source path is not a regular file or directory: {path}")
++    return found
++
++
+ def is_excluded(relative: PurePosixPath) -> bool:
+     parts = tuple(part.lower() for part in relative.parts)
+     if any(part in EXCLUDED_DIRS for part in parts):
+@@ -132,11 +206,32 @@
+ 
+ 
+ def load_baseline_hashes() -> dict[str, str]:
++    require_real_path(BASELINE_DIR, SCRIPT_DIR)
++    expected_files = BASELINE_PATHS | {"SHA256SUMS.txt", "checkpoint-manifest.json"}
++    actual_files = real_file_inventory(BASELINE_DIR)
++    if actual_files != expected_files:
++        missing = sorted(expected_files - actual_files)
++        extra = sorted(actual_files - expected_files)
++        raise ValueError(f"baseline inventory mismatch missing={missing} extra={extra}")
++    require_real_path(BASELINE_SUMS, SCRIPT_DIR)
++    require_real_path(BASELINE_MANIFEST, SCRIPT_DIR)
+     if not BASELINE_SUMS.is_file():
+         raise ValueError(f"Baseline checksums missing: {BASELINE_SUMS}")
+     sums_data = BASELINE_SUMS.read_bytes()
+     if sha256_bytes(sums_data) != BASELINE_SUMS_SHA256:
+         raise ValueError("Immutable baseline checksum index changed")
++    manifest_data = BASELINE_MANIFEST.read_bytes()
++    if sha256_bytes(manifest_data) != BASELINE_MANIFEST_SHA256:
++        raise ValueError("Immutable checkpoint manifest changed")
++    checkpoint = json.loads(manifest_data.decode("utf-8"))
++    if checkpoint.get("schema_version") != 1 or checkpoint.get("source") != "current-packaged-source":
++        raise ValueError("Checkpoint schema mismatch")
++    entries = checkpoint.get("files")
++    if not isinstance(entries, list) or len(entries) != 46:
++        raise ValueError("Checkpoint must contain 46 source files")
++    checkpoint_hashes = {entry["path"]: entry["sha256"].upper() for entry in entries}
++    if set(checkpoint_hashes) != BASELINE_PATHS:
++        raise ValueError("Checkpoint inventory differs from approved 46 paths")
+     hashes: dict[str, str] = {}
+     for line in sums_data.decode("utf-8").splitlines():
+         digest, separator, name = line.strip().partition("  ")
+@@ -146,20 +241,22 @@
+         if relative.is_absolute() or ".." in relative.parts or name in hashes:
+             raise ValueError(f"Invalid baseline path: {name}")
+         source = BASELINE_DIR.joinpath(*relative.parts)
++        require_real_path(source, BASELINE_DIR)
+         if not source.is_file() or sha256_bytes(source.read_bytes()) != digest.upper():
+             raise ValueError(f"Baseline hash mismatch: {name}")
+         hashes[name] = digest.upper()
+-    if set(hashes) != BASELINE_PATHS:
+-        raise ValueError("Baseline checksum list differs from expected five source files")
++    if set(hashes) != BASELINE_PATHS or hashes != checkpoint_hashes:
++        raise ValueError("Baseline checksums differ from approved 46-file checkpoint")
++    for entry in entries:
++        if BASELINE_DIR.joinpath(*PurePosixPath(entry["path"]).parts).stat().st_size != entry["bytes"]:
++            raise ValueError(f"Checkpoint size mismatch: {entry['path']}")
+     return hashes
+ 
+ 
+ def add_candidate(path: Path, found: dict[str, Path], excluded: list[str]) -> None:
+     if not path.exists() or not path.is_file():
+         return
+-    if path.is_symlink() or not is_within(path, REPO_ROOT):
+-        excluded.append(path.as_posix())
+-        return
++    require_real_path(path, REPO_ROOT)
+     relative = PurePosixPath(path.relative_to(REPO_ROOT).as_posix())
+     if is_excluded(relative):
+         excluded.append(relative.as_posix())
+@@ -199,16 +296,13 @@
+         }
+         for path in sorted(BASELINE_PATHS)
+     ]
+-    missing_new_files = set(KNOWN_NEW_FILES).difference(files)
+-    if missing_new_files:
+-        raise ValueError("known release files missing: " + ", ".join(sorted(missing_new_files)))
+     file_hashes = {entry["path"]: entry["sha256"] for entry in entries}
+-    removable_files = set(KNOWN_NEW_FILES) | {
+-        path for path in files if path.startswith(("static/", "tests/"))
+-    }
++    removable_files = set(files).difference(BASELINE_PATHS)
+     return {
+-        "schema_version": 2,
++        "schema_version": 3,
+         "archive": ARCHIVE_PATH.name,
++        "checkpoint_manifest_sha256": BASELINE_MANIFEST_SHA256,
++        "checkpoint_sums_sha256": BASELINE_SUMS_SHA256,
+         "baseline_files": [
+             {"path": path, "sha256": baseline_hashes[path]}
+             for path in sorted(baseline_hashes)
+@@ -234,15 +328,15 @@
+ 
+ 
+ def diff_bytes(files: dict[str, Path]) -> bytes:
+-    """Create text diffs against the five-file baseline and metadata for binaries."""
++    """Diff all approved baseline files; describe changed/new binaries by hash."""
+     chunks: list[str] = []
+     binary_metadata: list[str] = []
+     for relative, source in files.items():
+-        if relative in UNCHANGED_TRACKED_FILES:
+-            continue
+         current = source.read_bytes()
+         baseline_path = BASELINE_DIR.joinpath(*PurePosixPath(relative).parts)
+         old = baseline_path.read_bytes() if baseline_path.is_file() else None
++        if old == current:
++            continue
+         try:
+             current.decode("utf-8")
+             if old is not None:
+@@ -269,8 +363,10 @@
+ 
+         binary_metadata.append(
+             f"diff --git a/{relative} b/{relative}\n"
+-            f"new file mode 100644\n"
+-            f"Binary files /dev/null and b/{relative} differ\n"
++            + ("new file mode 100644\n" if old is None else "")
++            + f"Binary files {'/dev/null' if old is None else 'a/' + relative} and b/{relative} differ\n"
++            + (f"# BASELINE-BINARY bytes={len(old)} sha256={sha256_bytes(old)}\n" if old is not None else "")
++            +
+             f"# BINARY-METADATA bytes={len(current)} sha256={sha256_bytes(current)}\n"
+         )
+ 
+--- a/artifacts/redesign/verify_release.py
++++ b/artifacts/experience-v2/verify_release.py
+@@ -1,5 +1,5 @@
+ #!/usr/bin/env python3
+-"""Verify release archive integrity or run isolated HTTP/JavaScript smoke checks."""
++"""Verify experience-v2 archive, isolated behavior and 46-file rollback copy."""
+ 
+ from __future__ import annotations
+ 
+@@ -8,13 +8,16 @@
+ import importlib.util
+ import json
+ import os
++import re
+ import shutil
+ import subprocess
+ import sys
+ import tempfile
+ import zipfile
+ from pathlib import Path, PurePosixPath
+-
++from urllib.parse import quote
++
++sys.dont_write_bytecode = True
+ import build_release
+ 
+ 
+@@ -49,6 +52,8 @@
+         raise ValueError(f"excluded directory in archive: {name}")
+     if filename in FORBIDDEN_NAMES or suffixes.intersection(FORBIDDEN_SUFFIXES):
+         raise ValueError(f"excluded file in archive: {name}")
++    if any(marker in filename for marker in build_release.EXCLUDED_NAME_MARKERS):
++        raise ValueError(f"excluded secret marker in archive: {name}")
+ 
+ 
+ def verify_archive() -> int:
+@@ -56,8 +61,10 @@
+         raise ValueError("release manifest, manifest pin, or archive missing; run build_release.py first")
+     manifest_bytes = MANIFEST_PATH.read_bytes()
+     manifest = json.loads(manifest_bytes.decode("utf-8"))
+-    if manifest.get("schema_version") != 2 or manifest.get("archive") != ARCHIVE_PATH.name:
++    if manifest.get("schema_version") != 3 or manifest.get("archive") != ARCHIVE_PATH.name:
+         raise ValueError("release manifest schema or archive name mismatch")
++    for path in (MANIFEST_PATH, ARCHIVE_PATH, MANIFEST_PIN_PATH, build_release.DIFF_PATH):
++        build_release.require_real_path(path, SCRIPT_DIR)
+     expected_pin = f"{sha256(manifest_bytes)}  {MANIFEST_PATH.name}\n"
+     if MANIFEST_PIN_PATH.read_text(encoding="ascii") != expected_pin:
+         raise ValueError("release manifest SHA-256 pin mismatch")
+@@ -78,6 +85,9 @@
+         expected[name] = (digest.upper(), size)
+ 
+     baseline_hashes = build_release.load_baseline_hashes()
++    if (manifest.get("checkpoint_manifest_sha256") != build_release.BASELINE_MANIFEST_SHA256
++            or manifest.get("checkpoint_sums_sha256") != build_release.BASELINE_SUMS_SHA256):
++        raise ValueError("release checkpoint pins differ from approved baseline")
+     baseline_entries = manifest.get("baseline_files")
+     if not isinstance(baseline_entries, list):
+         raise ValueError("manifest baseline_files must be a list")
+@@ -116,7 +126,14 @@
+     return 0
+ 
+ 
++def require_behavior_source(source_root: Path) -> None:
++    build_release.require_real_path(source_root, source_root)
++    if source_root.absolute() == BASELINE_DIR.absolute():
++        build_release.load_baseline_hashes()
++
++
+ def _import_app(app_path: Path, import_root: Path):
++    require_behavior_source(import_root)
+     if not app_path.is_file():
+         raise FileNotFoundError(app_path)
+     sys.path.insert(0, str(import_root))
+@@ -131,23 +148,35 @@
+     return module
+ 
+ 
++def isolated_environment(database: Path) -> dict[str, str]:
++    environment = os.environ.copy()
++    environment.update({
++        "DATABASE_PATH": str(database),
++        "BTC_MODE": "demo",
++        "BTC_NETWORK": "regtest",
++        "ALLOW_MAINNET": "0",
++        "LN_MODE": "off",
++        "CUSTODY_MODE": "demo",
++        "ENABLE_DEMO_SEED": "0",
++        "ENABLE_LIGHTNING_POLLER": "0",
++        "APP_SECRET": "experience-v2-isolated-not-for-deployment",
++        "PYTHONDONTWRITEBYTECODE": "1",
++    })
++    return environment
++
++
+ def smoke_http(target: str, source_root: Path | None = None) -> dict[str, int]:
+     if source_root is None:
+         source_root = BASELINE_DIR if target == "baseline" else REPO_ROOT
+     app_path = source_root / "app.py"
+     if target not in {"baseline", "modified", "rollback-test"}:
+         raise ValueError("smoke target must be baseline, modified, or rollback-test")
++    if target == "baseline" and source_root.absolute() != BASELINE_DIR.absolute():
++        raise ValueError("baseline smoke requires the fixed immutable checkpoint")
++    require_behavior_source(source_root)
+     with tempfile.TemporaryDirectory(prefix=f"bitloja-{target}-smoke-") as temp_dir:
+         database = Path(temp_dir) / "isolated-marketplace.db"
+-        os.environ.update({
+-            "DATABASE_PATH": str(database),
+-            "BTC_MODE": "demo",
+-            "LN_MODE": "off",
+-            "CUSTODY_MODE": "demo",
+-            "ENABLE_DEMO_SEED": "0",
+-            "ENABLE_LIGHTNING_POLLER": "0",
+-            "APP_SECRET": "release-smoke-only-not-for-deployment",
+-        })
++        os.environ.update(isolated_environment(database))
+         module = _import_app(app_path, source_root)
+         module.init_db()
+         client = module.app.test_client()
+@@ -168,6 +197,21 @@
+             ):
+                 raise ValueError("/api/products payload must contain category and product lists")
+             statuses[endpoint] = response.status_code
++        static_count = 0
++        require_behavior_source(source_root)
++        for path in sorted((source_root / "static").rglob("*")):
++            if not path.is_file():
++                continue
++            build_release.require_real_path(path, source_root)
++            relative = path.relative_to(source_root).as_posix()
++            validate_archive_path(relative)
++            response = client.get("/" + quote(relative, safe="/"))
++            if response.status_code != 200 or response.data != path.read_bytes():
++                raise ValueError(f"static payload mismatch: {relative} HTTP {response.status_code}")
++            static_count += 1
++        if not static_count:
++            raise ValueError("full current baseline must contain static assets")
++        statuses["static_files"] = static_count
+         return statuses
+ 
+ 
+@@ -187,6 +231,7 @@
+ 
+ 
+ def smoke_javascript(source_root: Path = REPO_ROOT) -> int:
++    require_behavior_source(source_root)
+     scripts = sorted((source_root / "static" / "js").rglob("*.js"))
+     if not scripts:
+         raise ValueError("no static JavaScript files found")
+@@ -199,25 +244,43 @@
+     return len(scripts)
+ 
+ 
++def smoke_tests(source_root: Path) -> int:
++    """Run the repository suite in a separate interpreter with temporary SQLite."""
++    require_behavior_source(source_root)
++    with tempfile.TemporaryDirectory(prefix="bitloja-v2-suite-") as temporary:
++        environment = isolated_environment(Path(temporary) / "isolated-suite.sqlite3")
++        completed = subprocess.run(
++            [sys.executable, "-B", "-m", "unittest", "discover", "-s", "tests", "-q"],
++            cwd=source_root, env=environment, capture_output=True, text=True, timeout=180,
++        )
++    output = (completed.stdout + completed.stderr).strip()
++    if completed.returncode != 0:
++        raise ValueError(f"isolated unit suite failed exit={completed.returncode}: {output[-8000:]}")
++    matched = re.search(r"Ran (\d+) tests? in", output)
++    if not matched or int(matched.group(1)) < 1:
++        raise ValueError("isolated unit suite discovered no tests")
++    return int(matched.group(1))
++
++
+ def checked_rollback_target() -> Path:
+-    if ROLLBACK_TARGET.is_symlink():
+-        raise ValueError("rollback-test path cannot be a symlink")
+-    try:
+-        ROLLBACK_TARGET.resolve().relative_to(SCRIPT_DIR.resolve())
+-    except ValueError as error:
+-        raise ValueError("rollback-test path escaped artifact directory") from error
+-    return ROLLBACK_TARGET
++    fixed_target = (SCRIPT_DIR / "rollback-test").absolute()
++    if ROLLBACK_TARGET.absolute() != fixed_target:
++        raise ValueError("rollback target differs from fixed rollback-test path")
++    build_release.require_real_path(fixed_target, SCRIPT_DIR)
++    if fixed_target.resolve(strict=False) != fixed_target:
++        raise ValueError("rollback-test target or ancestor is redirected")
++    if fixed_target == REPO_ROOT.absolute() or fixed_target == BASELINE_DIR.absolute():
++        raise ValueError("rollback target overlaps workspace or baseline")
++    return fixed_target
+ 
+ 
+ def safe_target_path(root: Path, name: str) -> Path:
++    if root.absolute() != checked_rollback_target():
++        raise ValueError("rollback path root differs from fixed disposable target")
+     relative = PurePosixPath(name)
+     validate_archive_path(name)
+     destination = root.joinpath(*relative.parts)
+-    cursor = root
+-    for part in relative.parts:
+-        cursor = cursor / part
+-        if cursor.is_symlink():
+-            raise ValueError(f"rollback target contains symlink: {name}")
++    build_release.require_real_path(destination, root)
+     try:
+         destination.resolve(strict=False).relative_to(root.resolve())
+     except ValueError as error:
+@@ -227,10 +290,9 @@
+ 
+ def protected_source_snapshot() -> list[dict[str, object]]:
+     snapshot = []
+-    for name in (".env", "marketplace.db", "marketplace.db-wal", "marketplace.db-shm"):
++    for name in (".env", ".env.local", ".env.production", "marketplace.db", "marketplace.db-wal", "marketplace.db-shm"):
+         path = REPO_ROOT / name
+-        if path.is_symlink():
+-            raise ValueError(f"protected source path cannot be a symlink: {name}")
++        build_release.require_real_path(path, REPO_ROOT)
+         if path.is_file():
+             data = path.read_bytes()
+             snapshot.append({"path": name, "exists": True, "bytes": len(data), "sha256": sha256(data)})
+@@ -242,7 +304,7 @@
+ def expected_state(manifest: dict[str, object]) -> dict[str, object]:
+     files = manifest["files"]
+     return {
+-        "schema_version": 1,
++        "schema_version": 2,
+         "archive_sha256": sha256(ARCHIVE_PATH.read_bytes()),
+         "manifest_sha256": sha256(MANIFEST_PATH.read_bytes()),
+         "files": [{"path": entry["path"], "sha256": entry["sha256"]} for entry in files],
+@@ -261,7 +323,7 @@
+     if ROLLBACK_STATE_PATH.exists():
+         if not ROLLBACK_STATE_PATH.is_file() or ROLLBACK_STATE_PATH.read_bytes() != state_data:
+             raise ValueError("rollback test state conflict; existing file left unchanged")
+-    target.mkdir(parents=True, exist_ok=True)
++    checked_rollback_target().mkdir(parents=True, exist_ok=True)
+     with zipfile.ZipFile(ARCHIVE_PATH, "r") as archive:
+         for entry in manifest["files"]:
+             name = entry["path"]
+@@ -273,12 +335,13 @@
+             safe_target_path(target, name)
+             destination.write_bytes(data)
+     if not ROLLBACK_STATE_PATH.exists():
++        build_release.require_real_path(ROLLBACK_STATE_PATH, SCRIPT_DIR)
+         build_release.write_atomic(ROLLBACK_STATE_PATH, state_data)
+     print(f"ROLLBACK_TEST_PREPARED target={target} files={len(manifest['files'])} protected_source_paths={len(state['protected_source'])}")
+     return 0
+ 
+ 
+-def verify_restored() -> int:
++def verify_restored(unit_tests: bool = False) -> int:
+     verify_archive()
+     if not ROLLBACK_STATE_PATH.is_file():
+         raise ValueError("rollback test state missing; run --rollback-test first")
+@@ -310,8 +373,7 @@
+     actual_paths = set()
+     if target.exists():
+         for path in target.rglob("*"):
+-            if path.is_symlink():
+-                raise ValueError(f"rollback-test contains symlink: {path.relative_to(target)}")
++            build_release.require_real_path(path, target)
+             if path.is_file():
+                 actual_paths.add(path.relative_to(target).as_posix())
+     if actual_paths != kept_paths:
+@@ -325,11 +387,15 @@
+     protected_current = protected_source_snapshot()
+     if protected_current != state["protected_source"]:
+         raise ValueError("source database/environment hashes changed during rollback test")
+-    for removed_tree in ("static", "tests"):
+-        if (target / removed_tree).exists():
+-            raise ValueError(f"release {removed_tree} tree remains after rollback")
++    if actual_paths != build_release.BASELINE_PATHS:
++        raise ValueError("rollback must restore exactly the approved 46 source files")
+     statuses = smoke_http("rollback-test", target)
+-    print(f"RESTORED_OK target={target} GET/={statuses['/']} GET/api/bootstrap={statuses['/api/bootstrap']} GET/api/products={statuses['/api/products']} files={len(kept_paths)} removed_release_files={len(remove_hashes)} static_removed=true source_unchanged=true protected_unchanged=true")
++    js_files = smoke_javascript(target)
++    cases = smoke_tests(target) if unit_tests else None
++    if protected_source_snapshot() != state["protected_source"]:
++        raise ValueError("protected workspace changed during restored behavior tests")
++    case_result = f" UNIT_TESTS={cases}" if cases is not None else ""
++    print(f"RESTORED_OK GET/={statuses['/']} GET/api/bootstrap={statuses['/api/bootstrap']} GET/api/products={statuses['/api/products']} STATIC_FILES={statuses['static_files']} JS_PARSE_FILES={js_files}{case_result} files={len(kept_paths)} removed_new_files={len(remove_hashes)} source_unchanged=true protected_unchanged=true isolated_database=true")
+     return 0
+ 
+ 
+@@ -340,32 +406,38 @@
+     group.add_argument("--smoke", choices=("baseline", "modified"), help="run HTTP smoke checks against an isolated SQLite database")
+     group.add_argument("--rollback-test", action="store_true", help="stage a hash-verified release copy at the fixed rollback-test path")
+     group.add_argument("--restored", action="store_true", help="verify restored rollback copy, isolated HTTP behavior, JS parse, and source hashes")
+-    parser.add_argument("--js", action="store_true", help="also run node --check in modified smoke mode")
++    parser.add_argument("--js", action="store_true", help="also run node --check with either smoke mode")
++    parser.add_argument("--unit-tests", action="store_true", help="run isolated unittest suite with --smoke or --restored")
+     args = parser.parse_args()
+     try:
+         if args.archive:
+-            if args.js:
+-                parser.error("--js applies only with --smoke modified")
++            if args.js or args.unit_tests:
++                parser.error("--js and --unit-tests apply only with --smoke or --restored")
+             return verify_archive()
+         if args.rollback_test:
+-            if args.js:
+-                parser.error("--js does not apply with --rollback-test")
++            if args.js or args.unit_tests:
++                parser.error("--js and --unit-tests do not apply with --rollback-test")
+             return prepare_rollback_test()
+         if args.restored:
+             if args.js:
+                 parser.error("--js does not apply with --restored")
+-            return verify_restored()
++            return verify_restored(unit_tests=args.unit_tests)
++        build_release.load_baseline_hashes()
++        source_root = BASELINE_DIR if args.smoke == "baseline" else REPO_ROOT
++        protected_before = protected_source_snapshot()
+         statuses = smoke_http(args.smoke)
+         js_files = None
+         if args.js:
+-            if args.smoke != "modified":
+-                parser.error("--js applies only with --smoke modified")
+-            js_files = smoke_javascript()
++            js_files = smoke_javascript(source_root)
++        cases = smoke_tests(source_root) if args.unit_tests else None
++        if protected_source_snapshot() != protected_before:
++            raise ValueError("protected workspace changed during isolated smoke tests")
+         label = "BASELINE" if args.smoke == "baseline" else "MODIFIED"
+         js_result = f" JS_PARSE_FILES={js_files}" if js_files is not None else ""
+-        print(f"{label}_OK GET/={statuses['/']} GET/api/bootstrap={statuses['/api/bootstrap']} GET/api/products={statuses['/api/products']}{js_result} isolated_database=true")
++        case_result = f" UNIT_TESTS={cases}" if cases is not None else ""
++        print(f"{label}_OK GET/={statuses['/']} GET/api/bootstrap={statuses['/api/bootstrap']} GET/api/products={statuses['/api/products']} STATIC_FILES={statuses['static_files']}{js_result}{case_result} protected_unchanged=true isolated_database=true")
+         return 0
+-    except (OSError, ValueError, ImportError, zipfile.BadZipFile, json.JSONDecodeError) as error:
++    except (OSError, ValueError, ImportError, zipfile.BadZipFile, json.JSONDecodeError, subprocess.TimeoutExpired) as error:
+         print(f"VERIFY_ERROR {error}")
+         return 1
+ 
+--- a/artifacts/redesign/restore_release.py
++++ b/artifacts/experience-v2/restore_release.py
+@@ -1,5 +1,5 @@
+ #!/usr/bin/env python3
+-"""Restore approved release files in the fixed, disposable rollback-test copy."""
++"""Restore all 46 current baseline files in a contained disposable release copy."""
+ 
+ from __future__ import annotations
+ 
+@@ -7,9 +7,11 @@
+ import hashlib
+ import json
+ import os
++import sys
+ import tempfile
+ from pathlib import Path, PurePosixPath
+ 
++sys.dont_write_bytecode = True
+ import build_release
+ import verify_release
+ 
+@@ -31,8 +33,7 @@
+     if not relative.parts or relative.parts[0] != "baseline":
+         raise ValueError(f"rollback source is not an approved snapshot: {name}")
+     source = SCRIPT_DIR.joinpath(*relative.parts)
+-    if source.is_symlink():
+-        raise ValueError(f"rollback snapshot cannot be a symlink: {name}")
++    build_release.require_real_path(source, SCRIPT_DIR)
+     try:
+         source.resolve().relative_to(SCRIPT_DIR.resolve())
+     except ValueError as error:
+@@ -82,11 +83,9 @@
+             raise ValueError("malformed removal path/hash")
+         verify_release.validate_archive_path(name)
+         removals[name] = expected.upper()
+-    expected_removals = set(build_release.KNOWN_NEW_FILES) | {
+-        name for name in release_hashes if name.startswith(("static/", "tests/"))
+-    }
++    expected_removals = set(release_hashes).difference(BASELINE_PATHS)
+     if set(removals) != expected_removals:
+-        raise ValueError("trusted rollback removal inventory differs from explicit known-new-file list")
++        raise ValueError("trusted rollback removal inventory differs from new release paths")
+     if set(restores).intersection(removals):
+         raise ValueError("restore and removal inventories overlap")
+     for name, expected in removals.items():
+@@ -104,14 +103,9 @@
+ 
+ 
+ def preflight(target: Path, release_hashes: dict[str, str], restores: dict[str, tuple[bytes, str]], removals: dict[str, str]) -> None:
+-    if not target.is_dir() or target.is_symlink():
++    if target.absolute() != verify_release.checked_rollback_target() or not target.is_dir():
+         raise ValueError(f"rollback-test directory missing or invalid: {target}")
+-    actual_files = set()
+-    for path in target.rglob("*"):
+-        if path.is_symlink():
+-            raise ValueError(f"rollback-test contains symlink: {path.relative_to(target)}")
+-        if path.is_file():
+-            actual_files.add(path.relative_to(target).as_posix())
++    actual_files = build_release.real_file_inventory(target)
+     if actual_files != set(release_hashes):
+         missing = sorted(set(release_hashes) - actual_files)
+         extra = sorted(actual_files - set(release_hashes))
+@@ -143,6 +137,8 @@
+             stream.write(data)
+             stream.flush()
+             os.fsync(stream.fileno())
++        destination = target_path(target, name)
++        build_release.require_real_path(temporary, target)
+         temporary.replace(destination)
+     finally:
+         temporary.unlink(missing_ok=True)
+@@ -170,7 +166,13 @@
+             parent = parent.parent
+     for name, (data, _) in sorted(restores.items()):
+         write_baseline(name, data, target)
+-    print(f"RESTORE_OK target={target} baseline_files={len(BASELINE_PATHS)} removed_release_files={len(removals)}")
++    for name, (_, expected) in restores.items():
++        if digest(target_path(target, name).read_bytes()) != expected:
++            raise ValueError(f"restored baseline hash mismatch: {name}")
++    actual = {path.relative_to(target).as_posix() for path in target.rglob("*") if path.is_file()}
++    if actual != BASELINE_PATHS:
++        raise ValueError("restored copy inventory differs from approved 46-file baseline")
++    print(f"RESTORE_OK target={target} baseline_files={len(BASELINE_PATHS)} removed_new_files={len(removals)}")
+     return 0
+ 
+ 
+--- /dev/null
++++ b/artifacts/experience-v2/helper_guard_tests.py
+@@ -0,0 +1,157 @@
++"""Disposable Windows-junction and immutable-baseline regression fixtures."""
++
++from __future__ import annotations
++
++import os
++import subprocess
++import sys
++import tempfile
++import unittest
++from contextlib import ExitStack
++from pathlib import Path
++from unittest import mock
++
++sys.dont_write_bytecode = True
++import build_release
++import restore_release
++import verify_release
++
++
++ARTIFACT_ROOT = Path(__file__).resolve().parent
++
++
++class HelperGuardTests(unittest.TestCase):
++    def setUp(self):
++        self.temporary = tempfile.TemporaryDirectory(prefix="helper-guards-", dir=ARTIFACT_ROOT)
++        self.root = Path(self.temporary.name)
++        self.artifact = self.root / "artifact"
++        self.artifact.mkdir()
++        self.junctions: list[Path] = []
++
++    def tearDown(self):
++        for link in reversed(self.junctions):
++            link.absolute().relative_to(self.root.absolute())
++            if os.path.lexists(link):
++                os.rmdir(link)
++        build_release.require_real_path(self.root, ARTIFACT_ROOT)
++        self.root.resolve().relative_to(ARTIFACT_ROOT.resolve())
++        self.temporary.cleanup()
++
++    def junction(self, link: Path, destination: Path):
++        if os.name == "nt":
++            completed = subprocess.run(
++                ["cmd.exe", "/d", "/c", "mklink", "/J", str(link), str(destination)],
++                capture_output=True, text=True, creationflags=subprocess.CREATE_NO_WINDOW,
++            )
++            self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
++            self.assertFalse(link.is_symlink())
++        else:
++            link.symlink_to(destination, target_is_directory=True)
++        self.junctions.append(link)
++        self.assertTrue(build_release.is_redirected_path(link))
++
++    def fixed_target_context(self, artifact: Path | None = None, target: Path | None = None):
++        artifact = artifact or self.artifact
++        stack = ExitStack()
++        stack.enter_context(mock.patch.object(verify_release, "SCRIPT_DIR", artifact))
++        stack.enter_context(mock.patch.object(verify_release, "ROLLBACK_TARGET", target or artifact / "rollback-test"))
++        stack.enter_context(mock.patch.object(verify_release, "BASELINE_DIR", artifact / "baseline"))
++        stack.enter_context(mock.patch.object(verify_release, "REPO_ROOT", self.root / "workspace"))
++        return stack
++
++    def test_root_junction_rejected_before_stage_preflight_and_restore_write(self):
++        other = self.artifact / "another-copy"
++        other.mkdir()
++        sentinel = other / "README.md"
++        original = b"another-copy must remain unchanged\n"
++        sentinel.write_bytes(original)
++        target = self.artifact / "rollback-test"
++        self.junction(target, other)
++        manifest = self.artifact / "fixture-manifest.json"
++        manifest.write_text('{"files": []}', encoding="utf-8")
++        release = {"README.md": restore_release.digest(original)}
++        restores = {"README.md": (b"must not write\n", restore_release.digest(b"must not write\n"))}
++        with self.fixed_target_context(), mock.patch.object(verify_release, "verify_archive", return_value=0), \
++                mock.patch.object(verify_release, "MANIFEST_PATH", manifest):
++            checks = (
++                verify_release.checked_rollback_target,
++                lambda: build_release.require_real_path(target / "README.md", self.artifact),
++                verify_release.prepare_rollback_test,
++                lambda: restore_release.preflight(target, release, restores, {}),
++                lambda: restore_release.write_baseline("README.md", b"must not write\n", target),
++            )
++            for check in checks:
++                with self.subTest(check=check):
++                    with self.assertRaisesRegex(ValueError, "redirected"):
++                        check()
++            self.assertEqual(sentinel.read_bytes(), original)
++            self.assertEqual(set(other.iterdir()), {sentinel})
++        print("JUNCTION_GUARD_OK stage=blocked preflight=blocked write=blocked sentinel_unchanged=true")
++
++    def test_junction_ancestor_and_nested_destination_are_rejected(self):
++        alias = self.root / "artifact-alias"
++        self.junction(alias, self.artifact)
++        with self.fixed_target_context(artifact=alias):
++            with self.assertRaisesRegex(ValueError, "redirected"):
++                verify_release.checked_rollback_target()
++        target = self.artifact / "rollback-test"
++        target.mkdir()
++        other = self.artifact / "another-copy"
++        other.mkdir()
++        self.junction(target / "nested", other)
++        with self.fixed_target_context():
++            with self.assertRaisesRegex(ValueError, "redirected"):
++                verify_release.safe_target_path(target, "nested/README.md")
++        print("JUNCTION_ANCESTORS_OK artifact_ancestor=blocked nested_destination=blocked")
++
++    def test_nonfixed_target_rejected(self):
++        other = self.artifact / "another-copy"
++        other.mkdir()
++        with self.fixed_target_context(target=other):
++            with self.assertRaisesRegex(ValueError, "fixed rollback-test"):
++                verify_release.checked_rollback_target()
++        with self.fixed_target_context():
++            with self.assertRaisesRegex(ValueError, "fixed disposable"):
++                verify_release.safe_target_path(other, "README.md")
++        print("FIXED_TARGET_OK sibling_target=blocked")
++
++    def test_unpinned_baseline_files_rejected_before_behavior(self):
++        build_release.load_baseline_hashes()
++        baseline = self.artifact / "baseline"
++        baseline.mkdir()
++        for name in build_release.BASELINE_PATHS | {"SHA256SUMS.txt", "checkpoint-manifest.json"}:
++            destination = baseline / name
++            destination.parent.mkdir(parents=True, exist_ok=True)
++            destination.write_bytes((build_release.BASELINE_DIR / name).read_bytes())
++        with ExitStack() as patches:
++            for module in (build_release, verify_release):
++                patches.enter_context(mock.patch.object(module, "BASELINE_DIR", baseline))
++            patches.enter_context(mock.patch.object(build_release, "SCRIPT_DIR", self.artifact))
++            patches.enter_context(mock.patch.object(build_release, "BASELINE_SUMS", baseline / "SHA256SUMS.txt"))
++            patches.enter_context(mock.patch.object(build_release, "BASELINE_MANIFEST", baseline / "checkpoint-manifest.json"))
++            self.assertEqual(len(build_release.load_baseline_hashes()), 46)
++            for name in ("tests/test_unpinned_review.py", "static/js/unpinned-review.js", "static/css/unpinned-review.css"):
++                extra = baseline / name
++                extra.parent.mkdir(parents=True, exist_ok=True)
++                extra.write_text("raise RuntimeError('UNPINNED_EXECUTED')\n", encoding="utf-8")
++                with mock.patch.object(verify_release.importlib.util, "spec_from_file_location", side_effect=AssertionError("unexpected import")), \
++                        mock.patch.object(verify_release.subprocess, "run", side_effect=AssertionError("unexpected subprocess")), \
++                        mock.patch.object(Path, "rglob", side_effect=AssertionError("unexpected scan")):
++                    checks = (
++                        build_release.load_baseline_hashes,
++                        lambda: verify_release._import_app(baseline / "app.py", baseline),
++                        lambda: verify_release.smoke_http("baseline", baseline),
++                        lambda: verify_release.smoke_javascript(baseline),
++                        lambda: verify_release.smoke_tests(baseline),
++                    )
++                    for check in checks:
++                        with self.subTest(extra=name, check=check):
++                            with self.assertRaisesRegex(ValueError, "baseline inventory mismatch"):
++                                check()
++                extra.unlink()
++            self.assertEqual(len(build_release.load_baseline_hashes()), 46)
++        print("BASELINE_INVENTORY_OK files=46 metadata=2 extra_test=blocked extra_js=blocked extra_css=blocked imports=not_run scans=not_run discovery=not_run")
++
++
++if __name__ == "__main__":
++    unittest.main(verbosity=1)
